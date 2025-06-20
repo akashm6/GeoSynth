@@ -16,6 +16,6 @@ def db_conn():
         print(e)
 
 if __name__ == "__main__":
-    print("trying to connect...")
+    print("connecting to db...")
     db_conn()
-    
+    print("connection successful.")
