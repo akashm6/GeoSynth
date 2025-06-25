@@ -1,6 +1,7 @@
 from enum import Enum
 from sqlalchemy import create_engine, text
-from pydantic import BaseModel, Optional
+from typing import Optional
+from pydantic import BaseModel
 
 connection_string = 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
 engine = create_engine(connection_string)
