@@ -30,14 +30,18 @@ class ReportData(BaseModel):
 class DisasterMetaData(BaseModel):
     disaster_id: int
     date_event: datetime
+    disaster_country: Optional[str]
+    disaster_country_iso3: Optional[str]
+    disaster_lat: float
+    disaster_long: float
     disaster_description: Optional[str]
     disaster_name: Optional[str]
     disaster_primary_type: Optional[str]
     disaster_type: Optional[str]
     disaster_status: Optional[str]
-    profile_key_content: Optional[str] # latest situation reports
-    profile_useful_links: Optional[str]
+    profile_useful_links: list[str]
     disaster_url_alias: Optional[str]
+    
 
 class EnrichedEvent(BaseModel):
     report: ReportData
