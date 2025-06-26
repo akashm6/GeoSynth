@@ -2,7 +2,8 @@ import requests
 from sqlalchemy import create_engine, text
 from celery import Celery
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 from db_models.worldevent import ReportData, DisasterMetaData, EnrichedEvent
 
 app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://localhost:6379/0")
@@ -13,28 +14,39 @@ appname = "atlascope"
 
 @app.task
 def fetch_reports():
-    url = ("https://api.reliefweb.int/v1/reports"
-           "?appname=atlascope"
-           "&filter[field]=headline"
-           "&sort[]=date.created:desc&limit=100"
-           "&fields[include][]=disaster.id"
-           "&fields[include][]=id"
-           "&fields[include][]=headline"
-           "&fields[include][]=primary_country"
-           "&fields[include][]=source"
-           "&fields[include][]=date"
-           "&fields[include][]=language"
-           "&fields[include][]=url_alias"     
-    )
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    start = now - timedelta(days=1)
 
-    res = requests.get(url)
+    params = {
+        "appname": "atlascope",
+        "filter[conditions][0][field]": "date.created",
+        "filter[conditions][0][value][from]": start.isoformat(),
+        "filter[conditions][0][value][to]": now.isoformat(),
+        "sort[]": "date.created:desc",
+        "fields[include][]": [
+            "disaster.id", 
+            "id",
+            "headline", 
+            "primary_country", 
+            "source", 
+            "date", 
+            "language", 
+            "url_alias"
+        ],
+        "limit": 50
+    }
+
+    base_url = "https://api.reliefweb.int/v1/reports"
+    encoded_params = urlencode(params, doseq=True)
+    full_url = f"{base_url}?{encoded_params}"
+
+    res = requests.get(full_url)
     data = res.json()
     data = data.get("data")
 
     results = []
     for report in data:
         fields = report.get("fields")
-        #print(fields)
         report_id = int(fields.get("id", None))
         disaster_data = fields.get("disaster", [])
         disaster_id = disaster_data[0].get("id") if disaster_data else None
@@ -134,4 +146,4 @@ def test_add(name: str):
         conn.commit()
         print("worked.")
 
-fetch_reports()
+print(fetch_reports())
