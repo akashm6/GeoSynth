@@ -135,11 +135,35 @@ def fetch_insert_db():
         country_lat, country_long, date_report_created, headline_title, headline_image_url, 
         headline_image_caption, headline_summary, language, source_name, source_homepage, 
         report_url_alias, disaster_id, disaster_name, disaster_glide, disaster_type, disaster_status) 
-        VALUES (:report_id, :primary_country, :primary_country_iso3, :primary_country_shortname,
-        :country_lat, :country_long, :date_report_created, :headline_title, :headline_image_url, 
-        :headline_image_caption, :headline_summary, :language, :source_name, :source_homepage, 
-        :report_url_alias, :disaster_id, :disaster_name, :disaster_glide, :disaster_type, :disaster_status
-        );
+        VALUES (
+        :report_id, :primary_country, :primary_country_iso3, 
+        :primary_country_shortname,:country_lat, :country_long, 
+        :date_report_created, :headline_title, :headline_image_url, 
+        :headline_image_caption, :headline_summary, :language, :source_name, 
+        :source_homepage, :report_url_alias, :disaster_id, :disaster_name,
+        :disaster_glide, :disaster_type, :disaster_status
+        )
+        ON CONFLICT (report_id) DO UPDATE SET 
+        primary_country = EXCLUDED.primary_country,
+        primary_country_iso3 = EXCLUDED.primary_country_iso3,
+        primary_country_shortname = EXCLUDED.primary_country_shortname,
+        country_lat = EXCLUDED.country_lat,
+        country_long = EXCLUDED.country_long,
+        date_report_created = EXCLUDED.date_report_created,
+        headline_title = EXCLUDED.headline_title,
+        headline_image_url = EXCLUDED.headline_image_url,
+        headline_image_caption = EXCLUDED.headline_image_caption,
+        headline_summary = EXCLUDED.headline_summary,
+        language = EXCLUDED.language,
+        source_name = EXCLUDED.source_name,
+        source_homepage = EXCLUDED.source_homepage,
+        report_url_alias = EXCLUDED.report_url_alias,
+        disaster_id = EXCLUDED.disaster_id,
+        disaster_name = EXCLUDED.disaster_name,
+        disaster_glide = EXCLUDED.disaster_glide,
+        disaster_type = EXCLUDED.disaster_type,
+        disaster_status = EXCLUDED.disaster_status
+    ;
     """
     fetched_reports = fetch_reports()
     with engine.connect() as cursor:
@@ -174,6 +198,7 @@ def fetch_insert_db():
                 cursor.commit()
                 print("Insert successful.")
             except Exception as e:
+                print(e)
                 continue
 
 @app.task
