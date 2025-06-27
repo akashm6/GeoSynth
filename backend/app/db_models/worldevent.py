@@ -17,8 +17,6 @@ class ReportData(BaseModel):
     # report-specific
     date_report_created: datetime
     headline_title: Optional[str]
-    headline_image_url: Optional[str]
-    headline_image_caption: Optional[str]
     headline_summary: Optional[str]
     language: Optional[str]
     source_name: Optional[str]
