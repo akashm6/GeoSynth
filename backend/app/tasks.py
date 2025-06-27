@@ -24,7 +24,7 @@ def fetch_reports():
         "filter[conditions][0][value][to]": now.isoformat(),
         "sort[]": "date.created:desc",
         "fields[include][]": [
-            "disaster.id", 
+            "disaster", 
             "id",
             "headline", 
             "primary_country", 
@@ -47,9 +47,8 @@ def fetch_reports():
     results = []
     for report in data:
         fields = report.get("fields")
+        #print(fields)
         report_id = int(fields.get("id", None))
-        disaster_data = fields.get("disaster", [])
-        disaster_id = disaster_data[0].get("id") if disaster_data else None
         country_data = fields.get("primary_country", {})
         primary_country = country_data.get("name")
         if primary_country == "World":
@@ -69,10 +68,15 @@ def fetch_reports():
         source_name = fields.get("source", [])[0].get("shortname", None)
         source_homepage = fields.get("source", [])[0].get("homepage", None)
         report_url_alias = fields.get("url_alias", None)
+        disaster_data = fields.get("disaster", [])
+        disaster_id = disaster_data[0].get("id", None) if disaster_data else None
+        disaster_name = disaster_data[0].get("name", None) if disaster_data else None
+        disaster_glide = disaster_data[0].get("glide", None) if disaster_data else None
+        disaster_type = disaster_data[0].get("type", [])[0].get("name", None) if disaster_data else None
+        disaster_status = disaster_data[0].get("status", None) if disaster_data else None
         
         report = ReportData(
             report_id = report_id,
-            disaster_id = disaster_id,
             primary_country = primary_country,
             primary_country_iso3 = primary_country_iso3,
             primary_country_shortname = primary_country_shortname,
@@ -86,7 +90,12 @@ def fetch_reports():
             language = language,
             source_name = source_name,
             source_homepage = source_homepage,
-            report_url_alias = report_url_alias
+            report_url_alias = report_url_alias,
+            disaster_id = disaster_id,
+            disaster_name = disaster_name,
+            disaster_glide = disaster_glide,
+            disaster_type = disaster_type,
+            disaster_status = disaster_status
         )
 
         results.append(report)
@@ -94,76 +103,17 @@ def fetch_reports():
     return results
 
 @app.task
-def fetch_disaster_metadata():
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(days=150)
+def fetch_insert_db():
+    reports = fetch_reports()
+    
 
-    params = {
-        "appname": "atlascope",
-        "filter[conditions][0][field]": "date.created",
-        "filter[conditions][0][value][from]": start.isoformat(),
-        "filter[conditions][0][value][to]": now.isoformat(),
-        "sort[]": "date.created:desc",
-        "fields[include][]": [
-            "id", 
-            "description", 
-            "name",
-            "primary_country", 
-            "primary_type",
-            "date",
-            "status",
-            "type",
-            "profile.useful_links",
-            "url_alias"
-        ],
-        "limit": 100
-    }
+@app.task
+def refresh_data_insert():
+    fetch_insert_db()
 
-    base_url = "https://api.reliefweb.int/v1/disasters"
-    encoded_params = urlencode(params, doseq=True)
-    full_url = f"{base_url}?{encoded_params}"
-    res = requests.get(full_url)
 
-    data = res.json()
-    data = data.get("data")
-    print(data)
-    results = []
-    for report in data:
 
-        fields = report.get("fields")
-        disaster_id = fields.get("id", None)
-        date_event = datetime.fromisoformat(fields.get("date", {}).get("changed", None))
-        country = fields.get("primary_country", {})
-        disaster_country = country.get("shortname", None)
-        disaster_country_iso3 = country.get("iso3", None)
-        disaster_lat = country.get("location", {}).get("lat")
-        disaster_long = country.get("location", {}).get("lon")
-        disaster_description = fields.get("description", None)
-        disaster_name = fields.get("name", None)
-        disaster_type = fields.get("type", [])[0].get("name", None)
-        disaster_status = fields.get("status", None)
-        profile_data = fields.get("profile", {}).get("active", [])
-        profile_useful_links = [link.get("url", None) for link in profile_data.get("useful_links", {}).get("active", [])] if profile_data else None
-        disaster_url_alias = fields.get("url_alias", None)
-        
-        metadata = DisasterMetaData(
-            disaster_id = disaster_id,
-            date_event = date_event,
-            disaster_country = disaster_country,
-            disaster_country_iso3 = disaster_country_iso3,
-            disaster_lat = disaster_lat,
-            disaster_long = disaster_long,
-            disaster_description = disaster_description,
-            disaster_name = disaster_name,
-            disaster_type = disaster_type,
-            disaster_status = disaster_status,
-            profile_useful_links = profile_useful_links,
-            disaster_url_alias = disaster_url_alias
-        )
 
-        results.append(metadata)
-
-    return results
 
 @app.task
 def test_add(name: str):
@@ -177,4 +127,4 @@ def test_add(name: str):
         conn.commit()
         print("worked.")
 
-print(fetch_disaster_metadata())
+print(fetch_reports())
