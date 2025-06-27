@@ -25,15 +25,15 @@ def fetch_reports():
         "sort[]": "date.created:desc",
         "fields[include][]": [
             "disaster", 
+            "body",
             "id",
-            "headline", 
             "primary_country", 
             "source", 
             "date", 
             "language", 
             "url_alias"
         ],
-        "limit": 20
+        "limit": 100
     }
 
     base_url = "https://api.reliefweb.int/v1/reports"
@@ -47,35 +47,34 @@ def fetch_reports():
     results = []
     for report in data:
         fields = report.get("fields")
-        #print(fields)
-        report_id = int(fields.get("id", None))
+        language = fields.get("language", [])[0].get("name", None)
+        if language != "English":
+            continue
         country_data = fields.get("primary_country", {})
         primary_country = country_data.get("name")
         if primary_country == "World":
             continue
+        disaster_data = fields.get("disaster", [])
+        disaster_status = disaster_data[0].get("status", None) if disaster_data else None
+        if disaster_status and disaster_status == "past":
+            continue
+        disaster_id = disaster_data[0].get("id", None) if disaster_data else None
+        disaster_name = disaster_data[0].get("name", None) if disaster_data else None
+        disaster_glide = disaster_data[0].get("glide", None) if disaster_data else None
+        disaster_type = disaster_data[0].get("type", [])[0].get("name", None) if disaster_data else None
+        report_id = int(fields.get("id", None))
         primary_country_iso3 = country_data.get("iso3")
         primary_country_shortname = country_data.get("shortname", None)
         country_lat = country_data.get("location", {}).get("lat", None)
         country_long = country_data.get("location", {}).get("lon", None)
         date = fields.get("date",{}).get("created", None)
         date_report_created = datetime.fromisoformat(date)
-        headline_data = fields.get("headline", {})
-        headline_title = headline_data.get("title", None)
-        headline_image_url = headline_data.get("image", {}).get("url-large", None)
-        headline_image_caption = headline_data.get("image", {}).get("caption", None)
-        headline_summary = headline_data.get("summary", None)
-        language = fields.get("language", [])[0].get("name", None)
+        headline_title = fields.get("title", None)
+        headline_summary = fields.get("body", None)
         source_name = fields.get("source", [])[0].get("shortname", None)
         source_homepage = fields.get("source", [])[0].get("homepage", None)
         report_url_alias = fields.get("url_alias", None)
-        disaster_data = fields.get("disaster", [])
-        disaster_id = disaster_data[0].get("id", None) if disaster_data else None
-        disaster_name = disaster_data[0].get("name", None) if disaster_data else None
-        disaster_glide = disaster_data[0].get("glide", None) if disaster_data else None
-        disaster_type = disaster_data[0].get("type", [])[0].get("name", None) if disaster_data else None
-        disaster_status = disaster_data[0].get("status", None) if disaster_data else None
-        if disaster_status and disaster_status == "past":
-            continue
+        
         report = ReportData(
             report_id = report_id,
             primary_country = primary_country,
@@ -85,8 +84,6 @@ def fetch_reports():
             country_long = country_long,
             date_report_created = date_report_created,
             headline_title = headline_title,
-            headline_image_url = headline_image_url,
-            headline_image_caption = headline_image_caption,
             headline_summary = headline_summary,
             language = language,
             source_name = source_name,
@@ -99,11 +96,12 @@ def fetch_reports():
             disaster_status = disaster_status
         )
         results.append(report)
-
+    
     return results
 
 @app.task
 def fetch_insert_db():
+    test_table_clear()
     initial_query = """
         CREATE TABLE IF NOT EXISTS test_reports (
         report_id INTEGER PRIMARY KEY,
@@ -114,8 +112,6 @@ def fetch_insert_db():
         country_long REAL NOT NULL,
         date_report_created TIMESTAMP WITH TIME ZONE NOT NULL,
         headline_title TEXT,
-        headline_image_url TEXT,
-        headline_image_caption TEXT,
         headline_summary TEXT,
         language TEXT,
         source_name TEXT,
@@ -132,16 +128,16 @@ def fetch_insert_db():
     insert_query = """
         INSERT INTO test_reports 
         (report_id, primary_country, primary_country_iso3, primary_country_shortname,
-        country_lat, country_long, date_report_created, headline_title, headline_image_url, 
-        headline_image_caption, headline_summary, language, source_name, source_homepage, 
-        report_url_alias, disaster_id, disaster_name, disaster_glide, disaster_type, disaster_status) 
+        country_lat, country_long, date_report_created, headline_title, headline_summary, 
+        language, source_name, source_homepage, report_url_alias, disaster_id, disaster_name, 
+        disaster_glide, disaster_type, disaster_status) 
         VALUES (
         :report_id, :primary_country, :primary_country_iso3, 
         :primary_country_shortname,:country_lat, :country_long, 
-        :date_report_created, :headline_title, :headline_image_url, 
-        :headline_image_caption, :headline_summary, :language, :source_name, 
-        :source_homepage, :report_url_alias, :disaster_id, :disaster_name,
-        :disaster_glide, :disaster_type, :disaster_status
+        :date_report_created, :headline_title, :headline_summary, 
+        :language, :source_name, :source_homepage, :report_url_alias, 
+        :disaster_id, :disaster_name, :disaster_glide, :disaster_type, 
+        :disaster_status
         )
         ON CONFLICT (report_id) DO UPDATE SET 
         primary_country = EXCLUDED.primary_country,
@@ -151,8 +147,6 @@ def fetch_insert_db():
         country_long = EXCLUDED.country_long,
         date_report_created = EXCLUDED.date_report_created,
         headline_title = EXCLUDED.headline_title,
-        headline_image_url = EXCLUDED.headline_image_url,
-        headline_image_caption = EXCLUDED.headline_image_caption,
         headline_summary = EXCLUDED.headline_summary,
         language = EXCLUDED.language,
         source_name = EXCLUDED.source_name,
@@ -180,8 +174,6 @@ def fetch_insert_db():
                 "country_long": r.country_long,
                 "date_report_created": r.date_report_created,
                 "headline_title": r.headline_title,
-                "headline_image_url": r.headline_image_url,
-                "headline_image_caption": r.headline_image_caption,
                 "headline_summary": r.headline_summary,
                 "language": r.language,
                 "source_name": r.source_name,
@@ -211,10 +203,19 @@ def test_add(name: str):
     INSERT INTO test_table (name)
     VALUES (:name)
     """
-
     with engine.connect() as conn:
         conn.execute(text(query), {"name": name})
         conn.commit()
         print("worked.")
+
+@app.task
+def test_table_clear():
+    query = """
+    DROP TABLE test_reports;
+    """
+    with engine.connect() as cursor:
+        cursor.execute(text(query))
+        cursor.commit()
+        print("Reset.")
 
 fetch_insert_db()
