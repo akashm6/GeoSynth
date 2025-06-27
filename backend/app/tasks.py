@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from db_models.worldevent import ReportData
 
+
 app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://localhost:6379/0")
 
 connection_string = 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
@@ -110,6 +111,7 @@ def fetch_insert_db():
         primary_country_shortname TEXT,
         country_lat REAL NOT NULL,
         country_long REAL NOT NULL,
+        geom GEOGRAPHY(Point, 4326),
         date_report_created TIMESTAMP WITH TIME ZONE NOT NULL,
         headline_title TEXT,
         headline_summary TEXT,
@@ -128,12 +130,13 @@ def fetch_insert_db():
     insert_query = """
         INSERT INTO test_reports 
         (report_id, primary_country, primary_country_iso3, primary_country_shortname,
-        country_lat, country_long, date_report_created, headline_title, headline_summary, 
+        country_lat, country_long, geom, date_report_created, headline_title, headline_summary, 
         language, source_name, source_homepage, report_url_alias, disaster_id, disaster_name, 
         disaster_glide, disaster_type, disaster_status) 
         VALUES (
         :report_id, :primary_country, :primary_country_iso3, 
         :primary_country_shortname,:country_lat, :country_long, 
+        ST_SetSRID(ST_MakePoint(:country_long, :country_lat), 4326),
         :date_report_created, :headline_title, :headline_summary, 
         :language, :source_name, :source_homepage, :report_url_alias, 
         :disaster_id, :disaster_name, :disaster_glide, :disaster_type, 
