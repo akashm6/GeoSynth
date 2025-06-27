@@ -9,7 +9,6 @@ engine = create_engine(connection_string)
 
 class ReportData(BaseModel):
     report_id: int
-    disaster_id: Optional[int]
     primary_country: str
     primary_country_iso3: str
     primary_country_shortname: Optional[str]
@@ -25,28 +24,13 @@ class ReportData(BaseModel):
     source_name: Optional[str]
     source_homepage: Optional[str]
     report_url_alias: Optional[str]
- 
-# disaster-specific metadata for heatmaps, filters, etc.
-class DisasterMetaData(BaseModel):
-    disaster_id: int
-    date_event: datetime
-    disaster_country: Optional[str]
-    disaster_country_iso3: Optional[str]
-    disaster_lat: float
-    disaster_long: float
-    disaster_description: Optional[str]
+    # disaster-specific -> use for heatmaps/user querying
+    disaster_id: Optional[int]
     disaster_name: Optional[str]
-    disaster_primary_type: Optional[str]
+    disaster_glide: Optional[str]
     disaster_type: Optional[str]
     disaster_status: Optional[str]
-    profile_useful_links: list[str]
-    disaster_url_alias: Optional[str]
-    
 
-class EnrichedEvent(BaseModel):
-    report: ReportData
-    disaster_metadata: Optional[DisasterMetaData]
-           
 def test_insert():
     query = """
     INSERT INTO test_table  (name)
