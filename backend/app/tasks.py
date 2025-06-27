@@ -4,7 +4,7 @@ from celery import Celery
 import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
-from db_models.worldevent import ReportData, DisasterMetaData, EnrichedEvent
+from db_models.worldevent import ReportData
 
 app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://localhost:6379/0")
 
@@ -33,7 +33,7 @@ def fetch_reports():
             "language", 
             "url_alias"
         ],
-        "limit": 50
+        "limit": 20
     }
 
     base_url = "https://api.reliefweb.int/v1/reports"
@@ -74,7 +74,8 @@ def fetch_reports():
         disaster_glide = disaster_data[0].get("glide", None) if disaster_data else None
         disaster_type = disaster_data[0].get("type", [])[0].get("name", None) if disaster_data else None
         disaster_status = disaster_data[0].get("status", None) if disaster_data else None
-        
+        if disaster_status and disaster_status == "past":
+            continue
         report = ReportData(
             report_id = report_id,
             primary_country = primary_country,
@@ -97,23 +98,87 @@ def fetch_reports():
             disaster_type = disaster_type,
             disaster_status = disaster_status
         )
-
         results.append(report)
 
     return results
 
 @app.task
 def fetch_insert_db():
-    reports = fetch_reports()
-    
+    initial_query = """
+        CREATE TABLE IF NOT EXISTS test_reports (
+        report_id INTEGER PRIMARY KEY,
+        primary_country TEXT NOT NULL,
+        primary_country_iso3 TEXT NOT NULL,
+        primary_country_shortname TEXT,
+        country_lat REAL NOT NULL,
+        country_long REAL NOT NULL,
+        date_report_created TIMESTAMP WITH TIME ZONE NOT NULL,
+        headline_title TEXT,
+        headline_image_url TEXT,
+        headline_image_caption TEXT,
+        headline_summary TEXT,
+        language TEXT,
+        source_name TEXT,
+        source_homepage TEXT,
+        report_url_alias TEXT,
+        disaster_id INTEGER,
+        disaster_name TEXT,
+        disaster_glide TEXT,
+        disaster_type TEXT,
+        disaster_status TEXT
+        );
+    """
+
+    insert_query = """
+        INSERT INTO test_reports 
+        (report_id, primary_country, primary_country_iso3, primary_country_shortname,
+        country_lat, country_long, date_report_created, headline_title, headline_image_url, 
+        headline_image_caption, headline_summary, language, source_name, source_homepage, 
+        report_url_alias, disaster_id, disaster_name, disaster_glide, disaster_type, disaster_status) 
+        VALUES (:report_id, :primary_country, :primary_country_iso3, :primary_country_shortname,
+        :country_lat, :country_long, :date_report_created, :headline_title, :headline_image_url, 
+        :headline_image_caption, :headline_summary, :language, :source_name, :source_homepage, 
+        :report_url_alias, :disaster_id, :disaster_name, :disaster_glide, :disaster_type, :disaster_status
+        );
+    """
+    fetched_reports = fetch_reports()
+    with engine.connect() as cursor:
+        cursor.execute(text(initial_query))
+        cursor.commit()
+        print("Test Reports table created.")
+        for r in fetched_reports:
+            params = {
+                "report_id": r.report_id,
+                "primary_country": r.primary_country,
+                "primary_country_iso3": r.primary_country_iso3,
+                "primary_country_shortname": r.primary_country_shortname,
+                "country_lat": r.country_lat,
+                "country_long": r.country_long,
+                "date_report_created": r.date_report_created,
+                "headline_title": r.headline_title,
+                "headline_image_url": r.headline_image_url,
+                "headline_image_caption": r.headline_image_caption,
+                "headline_summary": r.headline_summary,
+                "language": r.language,
+                "source_name": r.source_name,
+                "source_homepage": r.source_homepage,
+                "report_url_alias": r.report_url_alias,
+                "disaster_id": r.disaster_id,
+                "disaster_name": r.disaster_name,
+                "disaster_glide": r.disaster_glide,
+                "disaster_type": r.disaster_type,
+                "disaster_status": r.disaster_status
+            }
+            try:
+                cursor.execute(text(insert_query), params)             
+                cursor.commit()
+                print("Insert successful.")
+            except Exception as e:
+                continue
 
 @app.task
 def refresh_data_insert():
     fetch_insert_db()
-
-
-
-
 
 @app.task
 def test_add(name: str):
@@ -127,4 +192,4 @@ def test_add(name: str):
         conn.commit()
         print("worked.")
 
-print(fetch_reports())
+fetch_insert_db()
