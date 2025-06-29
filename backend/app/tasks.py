@@ -22,9 +22,9 @@ def setup_periodic_data_refresh(sender: Celery, **kwargs):
     )
 
 @app.task
-def fetch_reports():
+def fetch_reports(start = None):
     now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(days=1)
+    start = now - timedelta(days=1) if not start else start
 
     params = {
         "appname": "atlascope",
@@ -55,6 +55,9 @@ def fetch_reports():
 
     results = []
     for report in data:
+        report_id = int(report.get("id", None))
+        if not report_id:
+            continue
         fields = report.get("fields")
         language = fields.get("language", [])[0].get("name", None)
         if language != "English":
@@ -62,6 +65,10 @@ def fetch_reports():
         country_data = fields.get("primary_country", {})
         primary_country = country_data.get("name")
         if primary_country == "World":
+            continue
+        country_lat = country_data.get("location", {}).get("lat", None)
+        country_long = country_data.get("location", {}).get("lon", None)
+        if not country_lat or not country_long:
             continue
         disaster_data = fields.get("disaster", [])
         disaster_status = disaster_data[0].get("status", None) if disaster_data else None
@@ -71,11 +78,8 @@ def fetch_reports():
         disaster_name = disaster_data[0].get("name", None) if disaster_data else None
         disaster_glide = disaster_data[0].get("glide", None) if disaster_data else None
         disaster_type = disaster_data[0].get("type", [])[0].get("name", None) if disaster_data else None
-        report_id = int(fields.get("id", None))
         primary_country_iso3 = country_data.get("iso3")
         primary_country_shortname = country_data.get("shortname", None)
-        country_lat = country_data.get("location", {}).get("lat", None)
-        country_long = country_data.get("location", {}).get("lon", None)
         date = fields.get("date",{}).get("created", None)
         date_report_created = datetime.fromisoformat(date)
         headline_title = fields.get("title", None)
@@ -109,8 +113,7 @@ def fetch_reports():
     return results
 
 @app.task
-def fetch_insert_db():
-    test_table_clear()
+def fetch_insert_db(start = None):
     initial_query = """
         CREATE TABLE IF NOT EXISTS test_reports (
         report_id INTEGER PRIMARY KEY,
@@ -170,7 +173,7 @@ def fetch_insert_db():
         disaster_status = EXCLUDED.disaster_status
     ;
     """
-    fetched_reports = fetch_reports()
+    fetched_reports = fetch_reports(start)
     with engine.connect() as cursor:
         cursor.execute(text(initial_query))
         cursor.commit()
@@ -207,7 +210,9 @@ def fetch_insert_db():
 # Refreshes the DB every 12 hours with new reports/events
 @app.task
 def fetch_refreshed_data():
-    return
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    start = now - timedelta(hours=12)
+    fetch_insert_db(start)
 
 @app.task
 def test_add(name: str):
@@ -230,4 +235,4 @@ def test_table_clear():
         cursor.commit()
         print("Reset.")
 
-#fetch_insert_db()
+print(fetch_reports())
