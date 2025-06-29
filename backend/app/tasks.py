@@ -2,16 +2,15 @@ import requests
 from sqlalchemy import create_engine, text
 from celery import Celery
 from celery.schedules import crontab
+from fastapi import FastAPI, HTTPException
 import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from db_models.worldevent import ReportData
+from db import engine
 
 
 app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://localhost:6379/0")
-
-connection_string = 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
-engine = create_engine(connection_string)
 appname = "atlascope"
 
 @app.on_after_configure.connect
@@ -22,15 +21,13 @@ def setup_periodic_data_refresh(sender: Celery, **kwargs):
     )
 
 @app.task
-def fetch_reports(start = None):
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(days=1) if not start else start
+def fetch_reports(start, end, offset = 0, limit = 1000):
 
     params = {
         "appname": "atlascope",
         "filter[conditions][0][field]": "date.created",
         "filter[conditions][0][value][from]": start.isoformat(),
-        "filter[conditions][0][value][to]": now.isoformat(),
+        "filter[conditions][0][value][to]": end.isoformat(),
         "sort[]": "date.created:desc",
         "fields[include][]": [
             "disaster", 
@@ -42,7 +39,8 @@ def fetch_reports(start = None):
             "language", 
             "url_alias"
         ],
-        "limit": 100
+        "limit": limit,
+        "offset": offset
     }
 
     base_url = "https://api.reliefweb.int/v1/reports"
@@ -113,7 +111,7 @@ def fetch_reports(start = None):
     return results
 
 @app.task
-def fetch_insert_db(start = None):
+def fetch_insert_db(reports):
     initial_query = """
         CREATE TABLE IF NOT EXISTS test_reports (
         report_id INTEGER PRIMARY KEY,
@@ -173,12 +171,13 @@ def fetch_insert_db(start = None):
         disaster_status = EXCLUDED.disaster_status
     ;
     """
-    fetched_reports = fetch_reports(start)
+
+    count = 0
     with engine.connect() as cursor:
         cursor.execute(text(initial_query))
         cursor.commit()
         print("Test Reports table created.")
-        for r in fetched_reports:
+        for r in reports:
             params = {
                 "report_id": r.report_id,
                 "primary_country": r.primary_country,
@@ -202,10 +201,11 @@ def fetch_insert_db(start = None):
             try:
                 cursor.execute(text(insert_query), params)             
                 cursor.commit()
-                print("Insert successful.")
+                count += 1
             except Exception as e:
                 print(e)
                 continue
+    print(f"Succesfully inserted {count} reports into DB.")
 
 # Refreshes the DB every 12 hours with new reports/events
 @app.task
@@ -213,6 +213,8 @@ def fetch_refreshed_data():
     now = datetime.now(timezone.utc).replace(microsecond=0)
     start = now - timedelta(hours=12)
     fetch_insert_db(start)
+
+    return {"Message": now}
 
 @app.task
 def test_add(name: str):
@@ -235,4 +237,24 @@ def test_table_clear():
         cursor.commit()
         print("Reset.")
 
-print(fetch_reports())
+@app.task
+def manual_backfill():
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    start = now - timedelta(days=14)
+    total_requests = 0
+    offset = 0
+    limit = 1000
+    max_requests = 1000
+
+    while total_requests < max_requests:
+        print(f"Fetching offset {offset}")
+        reports = fetch_reports(start = start, end = now, offset = offset, limit = limit)
+        if not reports:
+            break
+        fetch_insert_db(reports)
+        if len(reports) < limit:
+            break
+        offset += limit
+        total_requests += 1
+
+manual_backfill()
