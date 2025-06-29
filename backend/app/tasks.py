@@ -1,6 +1,8 @@
 import requests
 from sqlalchemy import create_engine, text
 from celery import Celery
+from dotenv import load_dotenv
+import os
 from celery.schedules import crontab
 from fastapi import FastAPI, HTTPException
 import json
@@ -9,8 +11,11 @@ from urllib.parse import urlencode
 from db_models.worldevent import ReportData
 from db import engine
 
+load_dotenv()
 
-app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://localhost:6379/0")
+redis_url = os.getenv("REDIS_URL") or "redis://localhost:6379/0"
+
+app = Celery("tasks", broker = redis_url, backend = redis_url)
 appname = "atlascope"
 
 @app.on_after_configure.connect
