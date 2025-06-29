@@ -1,6 +1,7 @@
 import requests
 from sqlalchemy import create_engine, text
 from celery import Celery
+from celery.schedules import crontab
 import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -12,6 +13,13 @@ app = Celery("tasks", broker = "redis://localhost:6379/0", backend="redis://loca
 connection_string = 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
 engine = create_engine(connection_string)
 appname = "atlascope"
+
+@app.on_after_configure.connect
+def setup_periodic_data_refresh(sender: Celery, **kwargs):
+    sender.add_periodic_task(
+        crontab(minute = 0, hour = '*/12'),
+        fetch_refreshed_data.s()
+    )
 
 @app.task
 def fetch_reports():
@@ -196,9 +204,10 @@ def fetch_insert_db():
                 print(e)
                 continue
 
+# Refreshes the DB every 12 hours with new reports/events
 @app.task
-def refresh_data_insert():
-    fetch_insert_db()
+def fetch_refreshed_data():
+    return
 
 @app.task
 def test_add(name: str):
@@ -221,4 +230,4 @@ def test_table_clear():
         cursor.commit()
         print("Reset.")
 
-fetch_insert_db()
+#fetch_insert_db()
