@@ -40,6 +40,7 @@ def fetch_reports(start, end, offset = 0, limit = 1000):
             "id",
             "primary_country", 
             "source", 
+            "source.type.name",
             "date", 
             "language", 
             "url_alias"
@@ -62,12 +63,16 @@ def fetch_reports(start, end, offset = 0, limit = 1000):
         if not report_id:
             continue
         fields = report.get("fields")
+        print(fields)
         language = fields.get("language", [])[0].get("name", None)
         if language != "English":
             continue
         country_data = fields.get("primary_country", {})
         primary_country = country_data.get("name")
         if primary_country == "World":
+            continue
+        headline_title = fields.get("title", None)
+        if "Location Map" in headline_title:
             continue
         country_lat = country_data.get("location", {}).get("lat", None)
         country_long = country_data.get("location", {}).get("lon", None)
@@ -85,7 +90,7 @@ def fetch_reports(start, end, offset = 0, limit = 1000):
         primary_country_shortname = country_data.get("shortname", None)
         date = fields.get("date",{}).get("created", None)
         date_report_created = datetime.fromisoformat(date)
-        headline_title = fields.get("title", None)
+        
         headline_summary = fields.get("body", None)
         source_name = fields.get("source", [])[0].get("shortname", None)
         source_homepage = fields.get("source", [])[0].get("homepage", None)
