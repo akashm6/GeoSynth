@@ -1,0 +1,84 @@
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.output_parsers.structured import StructuredOutputParser, ResponseSchema
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+llm_key = os.getenv("OPENAI_API_KEY")
+
+llm = ChatOpenAI(model="gpt-4.1-nano", api_key=llm_key)
+
+REGION_MAP = {
+    "asia": ["India", "China", "Japan", "Indonesia", "Pakistan", "Bangladesh", "Nepal", "Philippines", "Thailand"],
+    "europe": ["Germany", "France", "Italy", "Spain", "United Kingdom", "Sweden", "Norway", "Poland"],
+    "africa": ["Nigeria", "South Africa", "Kenya", "Egypt", "Ethiopia", "Ghana", "Morocco"],
+    "south america": ["Brazil", "Argentina", "Chile", "Colombia", "Peru"],
+    "north america": ["United States", "Canada", "Mexico"],
+    "middle east": ["Iran", "Iraq", "Syria", "Saudi Arabia", "Jordan", "Israel", "Yemen", "UAE", "Lebanon"]
+}
+
+response_schemas = [
+    ResponseSchema(name="sql", description="The SQL query to run"),
+    ResponseSchema(name="highlight_condition", description="A condition(s) to highlight"),
+]
+
+parser = StructuredOutputParser.from_response_schemas(response_schemas)
+
+prompt = PromptTemplate(
+    template=(
+        "You are an assistant that turns user questions into SQL queries on a PostgreSQL database of disaster reports.\n"
+        "Return a JSON object containing:\n"
+        "1. `sql`: A SQL query to fetch relevant data from the `test_reports` table.\n"
+        "2. `highlight_condition`: A condition that the frontend can use to highlight specific rows (e.g., \"magnitude > 6\" or \"disaster_status = 'ongoing'\").\n"
+        "All entries in the table have only one country as their primary_country."
+        "Note: users may reference continents or regions like \"Asia\" or \"Europe\" or \"Middle East\". These should be mapped to their member countries when generating the SQL. Use the `primary_country` or `primary_country_iso3` fields with explicit countries."
+        "Table: `test_reports`\n"
+        "Columns:\n"
+        "- report_id: integer\n"
+        "- primary_country: text\n"
+        "- primary_country_iso3: text\n"
+        "- primary_country_shortname: text\n"
+        "- country_lat: float\n"
+        "- country_long: float\n"
+        "- geom: GEOGRAPHY(Point, 4326)\n"
+        "- date_report_created: timestamp with timezone\n"
+        "- headline_title: text\n"
+        "- headline_summary: text\n"
+        "- language: text\n"
+        "- source_name: text\n"
+        "- source_homepage: text\n"
+        "- report_url_alias: text\n"
+        "- disaster_id: integer\n"
+        "- disaster_name: text\n"
+        "- disaster_glide: text\n"
+        "- disaster_type: text\n"
+        "- disaster_status: text\n\n"
+        "{format_instructions}\n\n"
+        "User question: {user_input}"
+    ),
+    input_variables=["user_input"],
+    partial_variables={"format_instructions": parser.get_format_instructions()}
+)
+
+chain = prompt | llm | parser
+
+def expand_region_terms(prompt: str) -> str:
+    lowered = prompt.lower()
+    for region, countries in REGION_MAP.items():
+        if region in lowered:
+            country_list = ", ".join(countries)
+            prompt += f" (Note: {region.title()} includes {country_list})"
+    return prompt
+
+def generate(user_input: str):
+    res = chain.invoke(user_input)
+    print(res.get("sql"))
+    return res
+
+#generate("Did any disasters occur in Asia in the last 3 days?")
+
+
+
+
