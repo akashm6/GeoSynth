@@ -26,14 +26,15 @@ response_schemas = [
 
 parser = StructuredOutputParser.from_response_schemas(response_schemas)
 
-prompt = PromptTemplate(
-    template=(
+def expand_region_terms(user_input: str) -> str:
+
+    prompt = (
         "You are an assistant that turns user questions into SQL queries on a PostgreSQL database of disaster reports.\n"
         "Return a JSON object containing:\n"
         "1. `sql`: A SQL query to fetch relevant data from the `test_reports` table.\n"
         "2. `highlight_condition`: A condition that the frontend can use to highlight specific rows (e.g., \"magnitude > 6\" or \"disaster_status = 'ongoing'\").\n"
-        "All entries in the table have only one country as their primary_country."
-        "Note: users may reference continents or regions like \"Asia\" or \"Europe\" or \"Middle East\". These should be mapped to their member countries when generating the SQL. Use the `primary_country` or `primary_country_iso3` fields with explicit countries."
+        "All entries in the table have only one country as their primary_country.\n"
+        "Note: A \"disaster\" should be defined as a report where `disaster_name` OR `disaster_type` is NOT NULL.\n"
         "Table: `test_reports`\n"
         "Columns:\n"
         "- report_id: integer\n"
@@ -56,28 +57,25 @@ prompt = PromptTemplate(
         "- disaster_type: text\n"
         "- disaster_status: text\n\n"
         "{format_instructions}\n\n"
-        "User question: {user_input}"
-    ),
-    input_variables=["user_input"],
-    partial_variables={"format_instructions": parser.get_format_instructions()}
-)
+        f"User question: {user_input}"
+    )
 
-chain = prompt | llm | parser
-
-def expand_region_terms(prompt: str) -> str:
     lowered = prompt.lower()
     for region, countries in REGION_MAP.items():
         if region in lowered:
             country_list = ", ".join(countries)
             prompt += f" (Note: {region.title()} includes {country_list})"
-    return prompt
+
+    return PromptTemplate(template=prompt)
 
 def generate(user_input: str):
+    full_prompt = expand_region_terms(user_input)    
+    chain = full_prompt | llm | parser
     res = chain.invoke(user_input)
-    print(res.get("sql"))
+
     return res
 
-#generate("Did any disasters occur in Asia in the last 3 days?")
+#print(generate("what disasters have happened in the middle east in the last 2 weeks?"))
 
 
 
