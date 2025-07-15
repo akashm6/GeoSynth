@@ -1,4 +1,3 @@
-from enum import Enum
 from sqlalchemy import create_engine, text
 from typing import Optional
 from pydantic import BaseModel
