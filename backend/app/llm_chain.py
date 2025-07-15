@@ -72,11 +72,7 @@ def generate(user_input: str):
     full_prompt = expand_region_terms(user_input)    
     chain = full_prompt | llm | parser
     res = chain.invoke(user_input)
-
     return res
-
-#print(generate("what disasters have happened in the middle east in the last 2 weeks?"))
-
 
 
 
