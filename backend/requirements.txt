@@ -8,6 +8,8 @@ redis
 langchain
 openai
 requests
-pyjwt
+pyjwt[crypto]
+
+
 
 
