@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from db import engine, SessionLocal
-from llm_chain import expand_region_terms, generate
+from app.db import engine, SessionLocal
+from app.llm_chain import expand_region_terms, generate
 from dotenv import load_dotenv
 from openai import OpenAI
-from db_models.worldevent import ReportData
+from app.db_models.worldevent import ReportData
 import requests
 import os
 import json
