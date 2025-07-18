@@ -20,33 +20,18 @@ import { Button } from "@/components/ui/button"
 
 export default function Login() {
 
-    const loginSchema = z.object({
-        email: z.string().email({message: "Invalid email address."}),
-        password: z.string().min(6, {message: "Password must be at least 6 characters."})
-    })
+    const router = useRouter();
 
-    const [submitMessage, setSubmitMessage] = useState('');
-    
-    const handleSubmit = async () => {
-        try {
-            const res = await fetch("http://localhost:8000/confirmLogin", {
-                method: "POST",
-                
-            })
-            if (res.ok) {
-                const data = await res.json();
-                setSubmitMessage(data.message)
-                
-            }
+    const login_url = `https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI}&scope=openid%20profile%20email&access_type=offline`
+    const handleClick = () => {
+        router.push(login_url)
+    };
 
-        }
+    return (
 
-        catch (err) {
-            console.error(err)
+        <div>
+            <Button onClick={handleClick}>Login with Google</Button>
+        </div>
 
-        }
-
-
-    }
-
+    );
 }
