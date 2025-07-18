@@ -1,7 +1,9 @@
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
+from app.db import engine, text, SessionLocal
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends
 from dotenv import load_dotenv
-from fastapi import APIRouter
 from pathlib import Path
 import requests
 import jwt
@@ -23,7 +25,19 @@ router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 
-def create_jwt(user_email: str):
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.get("/create-jwt")
+def create_jwt(user_email: str, db: Session = Depends(get_db)):
+
+    if not check_user_exists(user_email, db):
+        create_new_user(user_email, db)
+
     expiration = datetime.utcnow() + timedelta(days=7)
     payload = {
         "sub": user_email,
@@ -32,8 +46,46 @@ def create_jwt(user_email: str):
 
     return jwt.encode(payload, PRIV_JWT_KEY, algorithm="RS256")
 
+@router.get("/check")
+def check_user_exists(user_email: str, db: Session = Depends(get_db)):
+
+    exists_query = text("""
+    SELECT 1 FROM user_table 
+    WHERE email = :user_email
+    LIMIT 1;
+    """)
+
+    result = db.execute(exists_query, {"user_email": user_email}).scalar()
+
+    return result is not None
+
+@router.get("/create-new-user")
+def create_new_user(user_email: str, db: Session = Depends(get_db)):
+
+    date_created = datetime.utcnow().isoformat()
+    username = user_email.split("@")[0]
+
+    insert_query = text("""
+    INSERT INTO user_table (email, username, date_created)  
+    VALUES (:user_email, :username, :date_created);
+    """)
+
+    params = {
+        "user_email": user_email,
+        "username": username,
+        "date_created": date_created
+    }
+    try:
+        db.execute(insert_query, params)
+        db.commit()
+        return {"message": "User inserted!"}
+    
+    except Exception as e:
+        return {"message" : e}
+
+
 @router.get("/auth/google/redirect")
-def auth_and_redirect(code: str):
+def auth_and_redirect(code: str, db: Session = Depends(get_db)):
     token_url = "https://accounts.google.com/o/oauth2/token"
     data = {
         "code": code,
@@ -54,7 +106,7 @@ def auth_and_redirect(code: str):
     user_data = user_info.json()
 
     payload = {
-        "token": create_jwt(user_data.get("email")),
+        "token": create_jwt(user_data.get("email"), db),
         "user_data": user_data
     }
 
