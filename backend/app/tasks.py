@@ -8,8 +8,8 @@ from fastapi import FastAPI, HTTPException
 import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
-from db_models.worldevent import ReportData
-from db import engine
+from app.db_models.worldevent import ReportData
+from app.db import engine
 
 load_dotenv()
 
