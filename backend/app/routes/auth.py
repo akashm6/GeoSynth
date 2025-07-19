@@ -1,6 +1,7 @@
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from app.db import engine, text, SessionLocal
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends
 from dotenv import load_dotenv
@@ -13,9 +14,13 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 priv_key_path = BASE_DIR / "app" / "keys" / "privjwt.key"
+pub_key_path = BASE_DIR / "app" / "keys" / "pubjwt.key.pub"
 
 with open(priv_key_path, "r") as f:
     PRIV_JWT_KEY = f.read()
+
+with open(pub_key_path, "r") as f:
+    PUBLIC_JWT_KEY = f.read()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
@@ -24,6 +29,10 @@ GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
+
+# use this to validate jwt's with frontend payloads
+class JWTModel(BaseModel):
+    token: str
 
 def get_db():
     db = SessionLocal()
@@ -46,7 +55,7 @@ def create_jwt(user_email: str, db: Session = Depends(get_db)):
 
     return jwt.encode(payload, PRIV_JWT_KEY, algorithm="RS256")
 
-@router.get("/check")
+@router.get("/check-user-exists")
 def check_user_exists(user_email: str, db: Session = Depends(get_db)):
 
     exists_query = text("""
@@ -111,3 +120,21 @@ def auth_and_redirect(code: str, db: Session = Depends(get_db)):
     }
 
     return payload
+
+@router.post("/validate-token")
+def validate_token(token_info: JWTModel):
+
+    try:
+        decoded_token = jwt.decode(
+            token_info.token, 
+            key = PUBLIC_JWT_KEY, 
+            algorithms="RS256")
+
+        return True
+    
+    except jwt.ExpiredSignatureError:
+        return False
+    
+    except jwt.InvalidTokenError:
+        return False
+
