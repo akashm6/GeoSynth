@@ -2,106 +2,220 @@
 
 import { useRouter } from "next/navigation";
 import React, { useRef, useEffect, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css"; 
+import mapboxgl, { Map } from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from "@/components/ui/button";
+import clsx from "clsx";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
+type Report = {
+  report_id: number;
+  country_lat: number;
+  country_long: number;
+  primary_country: string;
+  headline_title: string;
+  headline_summary: string;
+  source_name: string;
+  source_homepage: string;
+  report_url_alias: string;
+};
+
+type GroupedEvent = {
+  lat: number;
+  long: number;
+  reports: Report[];
+};
 
 export default function Home() {
-
   const router = useRouter();
-
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const [LoggedIn, setLoggedIn] = useState(false)
+  const [LoggedIn, setLoggedIn] = useState(false);
+  const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
 
   const validateToken = async (t: string | null) => {
-    
-    if(!t) {
-      return false;
-    }
-    const payload = {
-      token: t
-    }
-
+    if (!t) return false;
     try {
-
       const res = await fetch(`http://localhost:8000/validate-token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json"},
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: t }),
       });
-
-      const tokenValid = await res.json();
-
-      return tokenValid
-    }
-
-    catch (error) {
+      return await res.json();
+    } catch (error) {
       console.error(error);
       return false;
     }
-  }
+  };
+
+  const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
+    const res = await fetch("http://localhost:8000/grab-initial-events");
+    return await res.json();
+  };
 
   const handleLogout = () => {
     localStorage.clear();
-    setLoggedIn(false)
+    setLoggedIn(false);
     router.push("/");
-  }
+  };
 
   const handleLogin = () => {
     localStorage.clear();
     router.push("/login");
-    
-  }
+  };
 
   const checkLoginStatus = async (token: string | null) => {
-      const isValid = await validateToken(token);
-      if(isValid) {
-        setLoggedIn(true)
-      }
-      else {
-        handleLogout();
-      }
-    }
+    const isValid = await validateToken(token);
+    setLoggedIn(isValid);
+    if (!isValid) handleLogout();
+  };
 
   useEffect(() => {
-
-    const token = localStorage.getItem("jwt")
+    const token = localStorage.getItem("jwt");
     checkLoginStatus(token);
 
     if (!mapContainerRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [-74.5, 40],
-      zoom: 9,
-    });
+    let map: Map;
 
-    return () => map.remove();
+    (async () => {
+      const groupedEvents = await grabInitialEvents();
+
+      const geojson = {
+        type: "FeatureCollection" as const,
+        features: groupedEvents.map((group) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [group.long, group.lat],
+          },
+          properties: {
+            reports: JSON.stringify(group.reports),
+            intensity: group.reports.length,
+          },
+        })),
+      };
+
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current!,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center: [-74.5, 40],
+        zoom: 3,
+      });
+
+      map.on("load", () => {
+        map.addSource("report-clusters", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        map.addLayer({
+          id: "report-circles",
+          type: "circle",
+          source: "report-clusters",
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["get", "intensity"],
+              1,
+              6,
+              10,
+              18,
+            ],
+            "circle-color": "rgba(0,200,255,0.6)",
+            "circle-blur": 0.4,
+          },
+        });
+
+        map.on("click", "report-circles", (e) => {
+          const feature = e.features?.[0];
+          if (feature && feature.properties?.reports) {
+            const reports = JSON.parse(feature.properties.reports);
+            setSelectedReports(reports);
+          }
+        });
+
+        map.on("mouseenter", "report-circles", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+
+        map.on("mouseleave", "report-circles", () => {
+          map.getCanvas().style.cursor = "";
+        });
+
+        const bounds = new mapboxgl.LngLatBounds();
+        geojson.features.forEach((f) => {
+          bounds.extend(f.geometry.coordinates as [number, number]);
+        });
+        map.fitBounds(bounds, { padding: 50 });
+      });
+    })();
+
+    return () => {
+      if (map) map.remove();
+    };
   }, [router]);
 
   return (
-    <div style={{ height: "100vh", width: "100%" }}>
-      <h1 style={{ position: "absolute", zIndex: 1, color: "white", padding: "1rem" }}>
-        Home Page!
-      </h1>
-        {LoggedIn && (
-          <div style={{ position: "absolute", zIndex: 1, color: "white", top: "1rem", right: "1rem" }}>
-          <Button style = {{ cursor: "pointer" }} onClick={handleLogout}>Logout</Button>
-          </div>
-        )}
+    <div className="relative h-screen w-screen overflow-hidden">
+      <div ref={mapContainerRef} className="fixed inset-0 z-0" style={{height: "100vh", width: "100vw"}} />
 
-        {!LoggedIn && (
-          <div style={{ position: "absolute", zIndex: 1, color: "white", top: "1rem", right: "1rem" }}>
-          <Button style = {{ cursor: "pointer" }} onClick={handleLogin}>Login</Button>
-          </div>
+      <h1 className="absolute top-4 left-4 text-white text-2xl font-semibold z-50 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]">
+        Atlascope
+      </h1>
+
+      <div className="absolute top-4 right-4 z-50">
+        {LoggedIn ? (
+          <Button
+            onClick={handleLogout}
+            className="bg-black/40 text-white border border-white/30 backdrop-blur-md shadow-md hover:shadow-[0_0_12px_4px_rgba(255,77,77,0.6)] transition"
+          >
+            Logout
+          </Button>
+        ) : (
+          <Button
+            onClick={handleLogin}
+            className="bg-black/40 text-white border border-white/30 backdrop-blur-md shadow-md hover:shadow-[0_0_12px_4px_rgba(80,180,255,0.6)] transition"
+          >
+            Login
+          </Button>
         )}
-      
-      <div ref={mapContainerRef} style={{ height: "100%", width: "100%" }} />
+      </div>
+
+      <div
+        className={clsx(
+          "fixed top-0 right-0 h-full w-[28rem] max-w-full bg-black/90 text-white p-6 overflow-y-auto z-[100] transform transition-transform duration-300 ease-in-out shadow-lg",
+          selectedReports ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Reports</h2>
+          <button
+            onClick={() => setSelectedReports(null)}
+            className="text-sm text-blue-400 hover:underline"
+          >
+            Close
+          </button>
+        </div>
+        <ul className="space-y-6">
+          {selectedReports?.map((report) => (
+            <li key={report.report_id} className="border-b border-white/20 pb-4">
+              <h3 className="font-semibold text-lg mb-1">{report.headline_title}</h3>
+              <p className="text-sm mb-1">{report.headline_summary}</p>
+              <p className="text-xs italic text-gray-400 mb-1">{report.source_name}</p>
+              <a
+                href={report.report_url_alias}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 text-sm hover:underline"
+              >
+                Read full report
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
