@@ -32,6 +32,7 @@ export default function Home() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [LoggedIn, setLoggedIn] = useState(false);
   const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
+  const mapRef = useRef<Map | null>(null);
 
   const validateToken = async (t: string | null) => {
     if (!t) return false;
@@ -76,8 +77,6 @@ export default function Home() {
 
     if (!mapContainerRef.current) return;
 
-    let map: Map;
-
     (async () => {
       const groupedEvents = await grabInitialEvents();
 
@@ -96,12 +95,14 @@ export default function Home() {
         })),
       };
 
-      map = new mapboxgl.Map({
+      const map = new mapboxgl.Map({
         container: mapContainerRef.current!,
         style: "mapbox://styles/mapbox/dark-v11",
         center: [-74.5, 40],
         zoom: 3,
       });
+
+      mapRef.current = map;
 
       map.on("load", () => {
         map.addSource("report-clusters", {
@@ -118,10 +119,8 @@ export default function Home() {
               "interpolate",
               ["linear"],
               ["get", "intensity"],
-              1,
-              6,
-              10,
-              18,
+              1, 6,
+              10, 18,
             ],
             "circle-color": "rgba(0,200,255,0.6)",
             "circle-blur": 0.4,
@@ -149,17 +148,38 @@ export default function Home() {
           bounds.extend(f.geometry.coordinates as [number, number]);
         });
         map.fitBounds(bounds, { padding: 50 });
+
+        map.addSource("llm-highlights", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [],
+          },
+        });
+
+        map.addLayer({
+          id: "llm-highlight-layer",
+          type: "circle",
+          source: "llm-highlights",
+          paint: {
+            "circle-radius": 10,
+            "circle-color": "#FF7F50",
+            "circle-opacity": 0.7,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#fff",
+          },
+        });
       });
     })();
 
     return () => {
-      if (map) map.remove();
+      if (mapRef.current) mapRef.current.remove();
     };
   }, [router]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      <div ref={mapContainerRef} className="fixed inset-0 z-0" style={{height: "100vh", width: "100vw"}} />
+      <div ref={mapContainerRef} className="fixed inset-0 z-0" style={{ height: "100vh", width: "100vw" }} />
 
       <h1 className="absolute top-4 left-4 text-white text-2xl font-semibold z-50 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]">
         Atlascope
@@ -216,48 +236,74 @@ export default function Home() {
           ))}
         </ul>
       </div>
+
       {LoggedIn && (
-  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[40rem] max-w-[90vw]">
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const input = (e.currentTarget.elements.namedItem("query") as HTMLInputElement).value;
-        if (!input) return;
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[40rem] max-w-[90vw]">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const input = (e.currentTarget.elements.namedItem("query") as HTMLInputElement).value;
+              if (!input) return;
 
-        try {
-          const res = await fetch("http://localhost:8000/llm-response", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ user_input: input }),
-          });
-          const data = await res.json();
-          console.log("LLM Result:", data);
+              try {
+                const res = await fetch("http://localhost:8000/llm-response", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ user_input: input }),
+                });
+                const data = await res.json();
+                console.log("LLM Result:", data);
 
-          setSelectedReports(data.prompt_results);
-        } catch (err) {
-          console.error("Failed to fetch:", err);
-        }
-      }}
-      className="flex bg-black/60 border border-white/20 rounded-xl shadow-xl backdrop-blur-md"
-    >
-      <input
-        name="query"
-        type="text"
-        placeholder="Ask Atlascope (e.g. disasters in Asia last month)"
-        className="flex-1 px-4 py-2 bg-transparent text-white placeholder-gray-400 focus:outline-none"
-      />
-      <button
-        type="submit"
-        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl"
-      >
-        Search
-      </button>
-    </form>
-  </div>
-)}
+                setSelectedReports(data.prompt_results);
 
+                const features = data.prompt_results.map((report: Report) => ({
+                  type: "Feature",
+                  geometry: {
+                    type: "Point",
+                    coordinates: [report.country_long, report.country_lat],
+                  },
+                }));
+
+                const map = mapRef.current;
+                if (map && map.isStyleLoaded()) {
+                  const source = map.getSource("llm-highlights") as mapboxgl.GeoJSONSource;
+                  source.setData({
+                    type: "FeatureCollection",
+                    features: features,
+                  });
+
+                  const bounds = new mapboxgl.LngLatBounds();
+                  (features as { geometry: { coordinates: [number, number] } }[]).forEach((f) => {
+  bounds.extend(f.geometry.coordinates);
+});
+
+                  if (!bounds.isEmpty()) {
+                    map.fitBounds(bounds, { padding: 50 });
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to fetch:", err);
+              }
+            }}
+            className="flex bg-black/60 border border-white/20 rounded-xl shadow-xl backdrop-blur-md"
+          >
+            <input
+              name="query"
+              type="text"
+              placeholder="Ask Atlascope (e.g. disasters in Asia last month)"
+              className="flex-1 px-4 py-2 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-r-xl"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
