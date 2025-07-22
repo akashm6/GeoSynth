@@ -9,9 +9,6 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from openai import OpenAI
 from app.db_models.worldevent import ReportData
-import requests
-import os
-import json
 
 load_dotenv()
 
@@ -44,13 +41,14 @@ def get_last_updated_time(db: Session = Depends(get_db)):
 def process_prompt(input: LLMInput, db:Session=Depends(get_db)):
     user_input = input.user_input
     response = generate(user_input)
-    sql_query = text(response.get("sql"))
-    rows = db.execute(sql_query)
+    query = response.get("sql").replace("%%", "%")
+    print("query!", query)
+    rows = db.execute(text(query))
     col = rows.keys()
     
     result = [dict(zip(col, row)) for row in rows.fetchall()]
 
-    return {"prompt_results": result, "sql": sql_query}
+    return {"prompt_results": result, "sql": query}
         
 @router.get("/grab-initial-events")
 def grab_initial_events(db: Session = Depends(get_db)):
@@ -62,7 +60,7 @@ def grab_initial_events(db: Session = Depends(get_db)):
     SELECT report_id, primary_country, country_lat, country_long, date_report_created, 
     headline_title, headline_summary, source_name, source_homepage, 
     report_url_alias FROM test_reports 
-    WHERE date_report_created >= :one_week_ago;
+    WHERE date_report_created >= :one_week_ago ORDER BY date_report_created DESC;
     """
     )
 
@@ -86,7 +84,6 @@ def grab_initial_events(db: Session = Depends(get_db)):
         })
 
     return result
-    #return rows[0]
 
 @router.get("/ping")
 def ping():
