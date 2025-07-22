@@ -32,6 +32,7 @@ export default function Home() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [LoggedIn, setLoggedIn] = useState(false);
   const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
+  const [lastUpdated, setLastUpdated] = useState('');
   const mapRef = useRef<Map | null>(null);
 
   const validateToken = async (t: string | null) => {
@@ -47,6 +48,11 @@ export default function Home() {
       console.error(error);
       return false;
     }
+  };
+
+  const getLastUpdatedTime = async () => {
+    const res = await fetch("http://localhost:8000/last-updated");
+    return await res.json();
   };
 
   const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
@@ -79,6 +85,8 @@ export default function Home() {
 
     (async () => {
       const groupedEvents = await grabInitialEvents();
+      const lastUpdated = await getLastUpdatedTime();
+      setLastUpdated(lastUpdated);
 
       const geojson = {
         type: "FeatureCollection" as const,
@@ -100,6 +108,7 @@ export default function Home() {
         style: "mapbox://styles/mapbox/dark-v11",
         center: [-74.5, 40],
         zoom: 3,
+        scrollZoom: true,
       });
 
       mapRef.current = map;
@@ -126,7 +135,7 @@ export default function Home() {
             "circle-blur": 0.4,
           },
         });
-
+        map.scrollZoom.enable({around: "center"})
         map.on("click", "report-circles", (e) => {
           const feature = e.features?.[0];
           if (feature && feature.properties?.reports) {
@@ -184,6 +193,9 @@ export default function Home() {
       <h1 className="absolute top-4 left-4 text-white text-2xl font-semibold z-50 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]">
         Atlascope
       </h1>
+      <h3 className="absolute top-10 left-4 text-white text-2xl font-semibold z-50 drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]">
+        Reports were last updated on: {lastUpdated}
+      </h3>
 
       <div className="absolute top-4 right-4 z-50">
         {LoggedIn ? (
@@ -248,40 +260,85 @@ export default function Home() {
               try {
                 const res = await fetch("http://localhost:8000/llm-response", {
                   method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ user_input: input }),
                 });
                 const data = await res.json();
                 console.log("LLM Result:", data);
 
-                setSelectedReports(data.prompt_results);
+                const rows = data.prompt_results || [];
+                console.log("the results: ", rows)
+                console.log(!rows);
+                if (rows.length === 0) {
+                  setSelectedReports([
+                    {
+                      report_id: -1,
+                      country_lat: 0,
+                      country_long: 0,
+                      primary_country: "",
+                      headline_title: `Total events: 0}`,
+                      headline_summary: "No reports available for this query.",
+                      source_name: "",
+                      source_homepage: "",
+                      report_url_alias: "#",
+                    },
+                  ]);
+                }
+  
+                else if(rows[0].event_count) {
+                  setSelectedReports([
+                    {
+                      report_id: -1,
+                      country_lat: 0,
+                      country_long: 0,
+                      primary_country: "",
+                      headline_title: `Total events: ${rows[0].event_count}`,
+                      headline_summary: "Summary data only — no individual reports returned.",
+                      source_name: "",
+                      source_homepage: "",
+                      report_url_alias: "#",
+                    },
+                  ]);
+                } 
 
-                const features = data.prompt_results.map((report: Report) => ({
-                  type: "Feature",
-                  geometry: {
-                    type: "Point",
-                    coordinates: [report.country_long, report.country_lat],
-                  },
-                }));
+                else {
+                  setSelectedReports(rows);
+                }
+                
+                const validFeatures = rows
+                  .filter(
+                    (row: any) =>
+                      typeof row.country_lat === "number" &&
+                      typeof row.country_long === "number" &&
+                      !isNaN(row.country_lat) &&
+                      !isNaN(row.country_long)
+                  )
+                  .map((row: any) => ({
+                    type: "Feature",
+                    geometry: {
+                      type: "Point",
+                      coordinates: [row.country_long, row.country_lat],
+                    },
+                    properties: { ...row },
+                  }));
 
                 const map = mapRef.current;
                 if (map && map.isStyleLoaded()) {
                   const source = map.getSource("llm-highlights") as mapboxgl.GeoJSONSource;
                   source.setData({
                     type: "FeatureCollection",
-                    features: features,
+                    features: validFeatures,
                   });
 
                   const bounds = new mapboxgl.LngLatBounds();
-                  (features as { geometry: { coordinates: [number, number] } }[]).forEach((f) => {
-  bounds.extend(f.geometry.coordinates);
-});
-
+                  validFeatures.forEach((f) => {
+                    bounds.extend(f.geometry.coordinates as [number, number]);
+                  });
                   if (!bounds.isEmpty()) {
-                    map.fitBounds(bounds, { padding: 50 });
+                    map.fitBounds(bounds, { padding: 100 });
                   }
+                } else {
+                  console.warn("Map not loaded or no valid coordinates found.");
                 }
               } catch (err) {
                 console.error("Failed to fetch:", err);
