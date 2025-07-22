@@ -346,11 +346,11 @@ const handleSliderChange = (value: number) => {
                       country_lat: 0,
                       country_long: 0,
                       primary_country: "",
-                      headline_title: `Total events: 0}`,
+                      headline_title: `No reports were found for your query. Slow news day!`,
                       headline_summary: "No reports available for this query.",
                       source_name: "",
                       source_homepage: "",
-                      report_url_alias: "#",
+                      report_url_alias: "",
                       date_report_created: new Date(),
                     },
                   ]);
@@ -407,7 +407,7 @@ const handleSliderChange = (value: number) => {
                     bounds.extend(f.geometry.coordinates as [number, number]);
                   });
                   if (!bounds.isEmpty()) {
-                    map.fitBounds(bounds, { padding: 100 });
+                    map.fitBounds(bounds, { padding: 100, maxZoom: 5,});
                   }
                 } else {
                   console.warn("Map not loaded or no valid coordinates found.");
