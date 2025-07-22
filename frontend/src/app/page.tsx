@@ -6,6 +6,7 @@ import mapboxgl, { Map } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
+import { Slider } from "@/components/ui/slider";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -19,6 +20,7 @@ type Report = {
   source_name: string;
   source_homepage: string;
   report_url_alias: string;
+  date_report_created: Date;
 };
 
 type GroupedEvent = {
@@ -32,7 +34,10 @@ export default function Home() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [LoggedIn, setLoggedIn] = useState(false);
   const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
+  const [allReports, setAllReports] = useState<GroupedEvent[] | null>(null);
+  const [filteredEvents, setFilteredEvents] = useState<GroupedEvent[] | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
+  const [daysAgo, setDaysAgo] = useState(14);
   const mapRef = useRef<Map | null>(null);
 
   const validateToken = async (t: string | null) => {
@@ -55,10 +60,21 @@ export default function Home() {
     return await res.json();
   };
 
-  const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
-    const res = await fetch("http://localhost:8000/grab-initial-events");
-    return await res.json();
-  };
+const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
+  const res = await fetch("http://localhost:8000/grab-initial-events");
+  const data = await res.json();
+
+  // Convert date strings to Date objects for consistent comparison
+  data.forEach((group: GroupedEvent) => {
+    group.reports.forEach((report: Report) => {
+      report.date_report_created = new Date(report.date_report_created);
+    });
+  });
+
+  setAllReports(data);
+  return data;
+};
+
 
   const handleLogout = () => {
     localStorage.clear();
@@ -77,6 +93,48 @@ export default function Home() {
     if (!isValid) handleLogout();
   };
 
+const handleSliderChange = (value: number) => {
+  setDaysAgo(value);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - value);
+
+  const filtered: GroupedEvent[] = [];
+
+  allReports?.forEach((group) => {
+    const reports = group.reports.filter(
+      (report) => new Date(report.date_report_created) >= cutoff
+    );
+    if (reports.length > 0) {
+      filtered.push({ lat: group.lat, long: group.long, reports });
+    }
+  });
+
+  setFilteredEvents(filtered);
+
+  const updatedGeoJSON = {
+    type: "FeatureCollection" as const,
+    features: filtered.map((group) => ({
+      type: "Feature" as const,
+      geometry: {
+        type: "Point" as const,
+        coordinates: [group.long, group.lat],
+      },
+      properties: {
+        reports: JSON.stringify(group.reports),
+        intensity: group.reports.length,
+      },
+    })),
+  };
+
+  const map = mapRef.current;
+  if (map && map.isStyleLoaded()) {
+    const source = map.getSource("report-clusters") as mapboxgl.GeoJSONSource;
+    source.setData(updatedGeoJSON);
+  }
+};
+
+
   useEffect(() => {
     const token = localStorage.getItem("jwt");
     checkLoginStatus(token);
@@ -87,7 +145,7 @@ export default function Home() {
       const groupedEvents = await grabInitialEvents();
       const lastUpdated = await getLastUpdatedTime();
       setLastUpdated(lastUpdated);
-
+      
       const geojson = {
         type: "FeatureCollection" as const,
         features: groupedEvents.map((group) => ({
@@ -213,7 +271,19 @@ export default function Home() {
             Login
           </Button>
         )}
+
       </div>
+      <div className="absolute top-30 left-6 z-50">
+         <Slider
+            min={1}
+            max={14}
+            step={1}
+            value={[daysAgo]}
+            onValueChange={([val]) => handleSliderChange(val)}
+         />
+         <span className = "text-white p-8"
+         >{daysAgo} Day(s) ago</span>
+         </div>
 
       <div
         className={clsx(
@@ -281,6 +351,7 @@ export default function Home() {
                       source_name: "",
                       source_homepage: "",
                       report_url_alias: "#",
+                      date_report_created: new Date(),
                     },
                   ]);
                 }
@@ -296,6 +367,7 @@ export default function Home() {
                       headline_summary: "Summary data only — no individual reports returned.",
                       source_name: "",
                       source_homepage: "",
+                      date_report_created: new Date(),
                       report_url_alias: "#",
                     },
                   ]);
