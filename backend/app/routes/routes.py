@@ -35,7 +35,10 @@ def get_last_updated_time(db: Session = Depends(get_db)):
     """)
     result = db.execute(query)
     last_updated = result.scalar()
-    return {"last_updated": last_updated}
+
+    readable = last_updated.strftime("%B %d, %Y at %I:%M %p UTC")
+    
+    return readable
 
 @router.post("/llm-response")
 def process_prompt(input: LLMInput, db:Session=Depends(get_db)):
@@ -73,7 +76,7 @@ def grab_initial_events(db: Session = Depends(get_db)):
 
         key = (country_lat, country_long)
         grouped[key].append(report)
-        
+
     result = []
     for key, reports in grouped.items():
         result.append({
