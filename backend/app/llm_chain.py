@@ -8,7 +8,7 @@ import os
 load_dotenv()
 llm_key = os.getenv("OPENAI_API_KEY")
 
-llm = ChatOpenAI(model="gpt-4.1-nano", api_key=llm_key)
+llm = ChatOpenAI(model="gpt-4.1-mini", api_key=llm_key)
 
 REGION_MAP = {
     "asia": ["India", "China", "Japan", "Indonesia", "Pakistan", "Bangladesh", "Nepal", "Philippines", "Thailand"],
@@ -39,6 +39,7 @@ def expand_region_terms(user_input: str) -> str:
         "If a user asks for a count of events or disasters, ensure the SQL query always keeps the `country_long` and `country_lat` fields for the country or region the user specifies.\n"
         "The SQL query should check if a country name matches on both the `primary_country` field or the `primary_country_shortname` field.\n"
         "There are no other fields that you can use other than the ones below. Do not create new fields.\n"
+        "Also include the `report_url_alias` field in your SQL queries, they are integral.\n"
         "Table: `test_reports`\n"
         "Columns:\n"
         "- report_id: integer\n"
