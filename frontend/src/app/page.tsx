@@ -38,6 +38,18 @@ export default function Home() {
   const [filteredEvents, setFilteredEvents] = useState<GroupedEvent[] | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [daysAgo, setDaysAgo] = useState(14);
+  const [openCards, setOpenCards] = useState<Set<number>>(new Set());
+
+const toggleCard = (id: number) => {
+  const newSet = new Set(openCards);
+  if (newSet.has(id)) {
+    newSet.delete(id);
+  } else {
+    newSet.add(id);
+  }
+  setOpenCards(newSet);
+};
+
   const mapRef = useRef<Map | null>(null);
 
   const validateToken = async (t: string | null) => {
@@ -64,7 +76,6 @@ const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
   const res = await fetch("http://localhost:8000/grab-initial-events");
   const data = await res.json();
 
-  // Convert date strings to Date objects for consistent comparison
   data.forEach((group: GroupedEvent) => {
     group.reports.forEach((report: Report) => {
       report.date_report_created = new Date(report.date_report_created);
@@ -168,6 +179,7 @@ const handleSliderChange = (value: number) => {
         zoom: 3,
         scrollZoom: true,
       });
+              map.scrollZoom.enable({around: "center"})
 
       mapRef.current = map;
 
@@ -193,7 +205,7 @@ const handleSliderChange = (value: number) => {
             "circle-blur": 0.4,
           },
         });
-        map.scrollZoom.enable({around: "center"})
+
         map.on("click", "report-circles", (e) => {
           const feature = e.features?.[0];
           if (feature && feature.properties?.reports) {
@@ -300,23 +312,63 @@ const handleSliderChange = (value: number) => {
             Close
           </button>
         </div>
-        <ul className="space-y-6">
-          {selectedReports?.map((report) => (
-            <li key={report.report_id} className="border-b border-white/20 pb-4">
-              <h3 className="font-semibold text-lg mb-1">{report.headline_title}</h3>
-              <p className="text-sm mb-1">{report.headline_summary}</p>
-              <p className="text-xs italic text-gray-400 mb-1">{report.source_name}</p>
-              <a
-                href={report.report_url_alias}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-300 text-sm hover:underline"
-              >
-                Read full report
-              </a>
-            </li>
-          ))}
-        </ul>
+        <ul className="space-y-3">
+  {selectedReports?.map((report) => {
+    const isOpen = openCards.has(report.report_id);
+    return (
+      <li
+        key={report.report_id}
+        className="bg-white/10 rounded-md p-3 shadow hover:shadow-lg transition duration-200"
+      >
+        <div
+          className="flex justify-between items-center cursor-pointer"
+          onClick={() => toggleCard(report.report_id)}
+        >
+<div className="flex flex-col">
+    <h3 className="font-semibold text-base">{report.headline_title}</h3>
+    <h5 className="text-xs text-gray-400 mt-1">
+      {new Date(report.date_report_created).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })}
+    </h5>
+  </div>         <span className="text-xs text-blue-300">
+            {isOpen ? "Hide" : "More"}
+          </span>
+        </div>
+
+        {isOpen && (
+          
+          <div className="mt-2 text-sm text-white/90 space-y-1">
+        {report.report_url_alias && (
+          <a
+            href={report.report_url_alias}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:underline text-sm"
+          >
+            Read Full Report →
+          </a>
+        )}
+
+  {report.headline_summary && (
+    <p className="text-xs text-gray-300 mt-1 line-clamp-3">
+      {report.headline_summary}
+    </p>
+  )}
+
+  <p className="italic text-gray-500 text-xs">
+    Source: {report.source_name}
+  </p>
+</div>
+
+        )}
+      </li>
+    );
+  })}
+</ul>
+
       </div>
 
       {LoggedIn && (
@@ -421,7 +473,7 @@ const handleSliderChange = (value: number) => {
             <input
               name="query"
               type="text"
-              placeholder="Ask Atlascope (e.g. disasters in Asia last month)"
+              placeholder="Ask Atlascope (e.g. disasters in Asia last week)"
               className="flex-1 px-4 py-2 bg-transparent text-white placeholder-gray-400 focus:outline-none"
             />
             <button
