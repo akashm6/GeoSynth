@@ -63,7 +63,6 @@ def fetch_reports(start, end, offset = 0, limit = 1000):
         if not report_id:
             continue
         fields = report.get("fields")
-        print(fields)
         language = fields.get("language", [])[0].get("name", None)
         if language != "English":
             continue
@@ -72,7 +71,7 @@ def fetch_reports(start, end, offset = 0, limit = 1000):
         if primary_country == "World":
             continue
         headline_title = fields.get("title", None)
-        if "Location Map" in headline_title:
+        if "Location Map" in headline_title or "Monthly Snapshot" in headline_title:
             continue
         country_lat = country_data.get("location", {}).get("lat", None)
         country_long = country_data.get("location", {}).get("lon", None)
