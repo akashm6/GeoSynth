@@ -1,21 +1,23 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.db import engine, SessionLocal
+from app.db import SessionLocal
 from datetime import datetime, timedelta
-from app.llm_chain import expand_region_terms, generate
+from app.llm_chain import generate
 from collections import defaultdict
 from dotenv import load_dotenv
-from openai import OpenAI
-from app.db_models.worldevent import ReportData
+import redis
 
 load_dotenv()
 
 router = APIRouter()
 
+redis_client = redis.Redis(decode_responses=True)
+
 class LLMInput(BaseModel):
     user_input: str
+    loggedIn: bool
 
 def get_db():
     db = SessionLocal()
@@ -38,7 +40,18 @@ def get_last_updated_time(db: Session = Depends(get_db)):
     return readable
 
 @router.post("/llm-response")
-def process_prompt(input: LLMInput, db:Session=Depends(get_db)):
+def process_prompt(input: LLMInput, request: Request, db:Session=Depends(get_db)):
+
+    if not input.loggedIn:
+        client_ip = request.client.host
+        key = f"anon-llm:{client_ip}"
+        count = redis_client.get(key)
+        if count and int(count) >= 4:
+            raise HTTPException(status_code=429, detail="LLM limit reached for guest use. Log in for unlimited LLM usage!")
+        else:
+            redis_client.incr(key)
+            redis_client.expire(key, 86400)
+
     user_input = input.user_input
     response = generate(user_input)
     query = response.get("sql").replace("%%", "%")
@@ -47,7 +60,9 @@ def process_prompt(input: LLMInput, db:Session=Depends(get_db)):
     col = rows.keys()
     
     result = [dict(zip(col, row)) for row in rows.fetchall()]
-
+    if not input.loggedIn:
+        return {"prompt_results": result, "sql": query, "attempts_left": 4 - int(redis_client.get(key))}
+    
     return {"prompt_results": result, "sql": query}
         
 @router.get("/grab-initial-events")
