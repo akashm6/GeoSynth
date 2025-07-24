@@ -53,18 +53,18 @@ def process_prompt(input: LLMInput, db:Session=Depends(get_db)):
 @router.get("/grab-initial-events")
 def grab_initial_events(db: Session = Depends(get_db)):
 
-    one_week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
-    print(one_week_ago)
+    three_weeks_ago = (datetime.utcnow() - timedelta(days=21)).isoformat()
+    print(three_weeks_ago)
 
     query = text(f"""
     SELECT report_id, primary_country, country_lat, country_long, date_report_created, 
     headline_title, headline_summary, source_name, source_homepage, 
     report_url_alias FROM test_reports 
-    WHERE date_report_created >= :one_week_ago ORDER BY date_report_created DESC;
+    WHERE date_report_created >= :three_weeks_ago ORDER BY date_report_created DESC;
     """
     )
 
-    rows = db.execute(query, {"one_week_ago": one_week_ago}).fetchall()
+    rows = db.execute(query, {"three_weeks_ago": three_weeks_ago}).fetchall()
 
     grouped = defaultdict(list)
 
