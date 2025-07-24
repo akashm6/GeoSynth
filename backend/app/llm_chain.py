@@ -42,6 +42,7 @@ def expand_region_terms(user_input: str) -> str:
         "If a user asks for a count of events or disasters, ensure the SQL query always keeps the `country_long` and `country_lat` fields for the country or region the user specifies.\n"
         "The SQL query should check if a country name matches on either the `primary_country` field or the `primary_country_shortname` field. Ex. (primary_country = 'Mexico' OR primary_country_shortname = 'Mexico')\n"
         "You must always include the `report_id`, `date_report_created`, `headline_title`, `headline_summary`, `source_homepage`, `source_name`, `country_lat`, `country_long`, `primary_country`, `primary_country_shortname`, and `report_url_alias` fields in the SQL query, as it's necessary to parse reports correctly.\n" \
+        "If a user's input does not seem to be asking a question, simply return a sql query that returns an empty list.\n"
         "If a user asks for \"Turkey\", have the SQL query search for \"Türkiye\" instead for correct results.\n"
         "There are no other fields that you can use other than the ones below. Do not create new fields.\n"
         "Table: `test_reports`\n"
