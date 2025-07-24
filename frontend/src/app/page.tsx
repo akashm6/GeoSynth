@@ -227,6 +227,7 @@ const handleSliderChange = (value: number) => {
           bounds.extend(f.geometry.coordinates as [number, number]);
         });
         map.fitBounds(bounds, { padding: 50 });
+        map.scrollZoom.enable({around: "center"})
 
         map.addSource("llm-highlights", {
           type: "geojson",
@@ -317,7 +318,7 @@ const handleSliderChange = (value: number) => {
     const isOpen = openCards.has(report.report_id);
     return (
       <li
-        key={report.report_id}
+        key={report.report_id || report.primary_country}
         className="bg-white/10 rounded-md p-3 shadow hover:shadow-lg transition duration-200"
       >
         <div
@@ -326,6 +327,7 @@ const handleSliderChange = (value: number) => {
         >
 <div className="flex flex-col">
     <h3 className="font-semibold text-base">{report.headline_title}</h3>
+    <h4 className="text-gray-400 text-xs pt-1">{report.primary_country}</h4>
     <h5 className="text-xs text-gray-400 mt-1">
       {new Date(report.date_report_created).toLocaleDateString(undefined, {
         year: "numeric",
@@ -459,7 +461,10 @@ const handleSliderChange = (value: number) => {
                     bounds.extend(f.geometry.coordinates as [number, number]);
                   });
                   if (!bounds.isEmpty()) {
-                    map.fitBounds(bounds, { padding: 100, maxZoom: 5,});
+                    map.fitBounds(bounds, { 
+                      padding: 100, 
+                      maxZoom: 5,});
+                    map.scrollZoom.enable({around: "center"})
                   }
                 } else {
                   console.warn("Map not loaded or no valid coordinates found.");
