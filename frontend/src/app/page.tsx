@@ -104,6 +104,10 @@ const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
     if (!isValid) handleLogout();
   };
 
+  type MapWithHandler = mapboxgl.Map & {
+  _reportClickHandler?: (e: mapboxgl.MapMouseEvent) => void;
+};
+
 const handleSliderChange = (value: number) => {
   setDaysAgo(value);
 
@@ -138,10 +142,31 @@ const handleSliderChange = (value: number) => {
     })),
   };
 
-  const map = mapRef.current;
+  const map = mapRef.current as MapWithHandler;
   if (map && map.isStyleLoaded()) {
     const source = map.getSource("report-clusters") as mapboxgl.GeoJSONSource;
     source.setData(updatedGeoJSON);
+
+    if (map._reportClickHandler) {
+      map.off("click", "report-circles", map._reportClickHandler);
+    }
+
+    const handleReportClick = (e: mapboxgl.MapMouseEvent) => {
+      const feature = e.features?.[0];
+      if (feature && feature.properties?.reports) {
+        const rawReports: Report[] = JSON.parse(feature.properties.reports);
+
+        const filteredReports = rawReports.filter((report) => {
+          const reportDate = new Date(report.date_report_created);
+          return reportDate >= cutoff;
+        });
+
+        setSelectedReports(filteredReports);
+      }
+    };
+
+    map._reportClickHandler = handleReportClick;
+    map.on("click", "report-circles", handleReportClick);
   }
 };
 
@@ -289,7 +314,7 @@ const handleSliderChange = (value: number) => {
       <div className="absolute top-30 left-6 z-50">
          <Slider
             min={1}
-            max={14}
+            max={21}
             step={1}
             value={[daysAgo]}
             onValueChange={([val]) => handleSliderChange(val)}
