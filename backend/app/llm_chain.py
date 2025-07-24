@@ -11,12 +11,15 @@ llm_key = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(model="gpt-4.1-mini", api_key=llm_key)
 
 REGION_MAP = {
-    "asia": ["India", "China", "Japan", "Indonesia", "Pakistan", "Bangladesh", "Nepal", "Philippines", "Thailand"],
-    "europe": ["Germany", "France", "Italy", "Spain", "United Kingdom", "Sweden", "Norway", "Poland"],
-    "africa": ["Nigeria", "South Africa", "Kenya", "Egypt", "Ethiopia", "Ghana", "Morocco"],
-    "south america": ["Brazil", "Argentina", "Chile", "Colombia", "Peru"],
-    "north america": ["United States", "Canada", "Mexico"],
-    "middle east": ["Iran", "Iraq", "Syria", "Saudi Arabia", "Jordan", "Israel", "Yemen", "UAE", "Lebanon"]
+    "asia": ["India", "China", "Japan", "Indonesia", "Pakistan", "Bangladesh", "Nepal", "Philippines", "Thailand", "Myanmar", "Laos", "Kazakhstan", "Tajikistan", "Turkmenistan", "Russia", "Bhutan", "Sri Lanka", "South Korea", "North Korea", "Vietnam", "Yemen", "Uzbekistan", "Malaysia", "Singapore", 
+             "Mongolia", "Bhutan", "Türkiye"],
+    "europe": ["Germany", "France", "Italy", "Spain", "United Kingdom", "Sweden", "Norway", "Poland", "Switzerland", "Portugal", "Hungary", "Greece", "Serbia", "Ukraine", "Moldova", "Lithuania", "Finland", "Croatia", "Belarus", "Slovakia", "Austria", "Albania", "Bulgaria", "Latvia", "Russia", "Netherlands", "Ireland", "Moldova", "Bosnia and Herzegovina", 
+               "Estonia", "Iceland", "Greenland", "Cyrpus", "Malta"],
+    "africa": ["Nigeria", "Ethiopia", "Egypt", "Democratic Republic of the Congo", "Tanzania", "South Africa", "Kenya", "Sudan", "South Sudan", "Uganda", "Algeria", "Angola", "Morocco", "Mozambique", "Ghana", "Madagascar", "Côte d'Ivoire", "Cameroon", "Niger", "Mali", "Burkina Faso", "Malawi", "Zambia", "Chad", "Somalia", "Senegal", "Zimbabwe",
+               "Guinea", "Benin", "Rwanda", "Burundi", "Tunisia", "Togo", "Sierra Leone", "Libya", "Congo", "Liberia", "Central African Republic", "Mauritania", "Eritrea", "Namibia", "Gambia", "Gabon", "Botswana", "Lesotho", "Guinea-Bissau", "Equatorial Guinea", "Mauritius", "Eswatini", "Djibouti", "Comoros", "Seychelles"],
+    "south america": ["Brazil", "Argentina", "Chile", "Colombia", "Peru", "Bolivia", "Ecuador", "Guyana", "Paraguay", "Suriname", "Uruguay", "Venezuela"],
+    "north america": ["United States", "Canada", "Mexico", "Bahamas", "Belize", "Costa Rica", "Cuba", "Dominican Republic", "El Salvador", "Grenada", "Guatemala", "Jamaica", "Haiti", "Honduras", "Nicaragua", "Panama", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Trinidad and Tobago"],
+    "middle east": ["Iran", "Iraq", "Syria", "Saudi Arabia", "Jordan", "Israel", "Yemen", "United Arab Emirates", "Lebanon", "Oman", "Qatar", "Occupied Paliestinian Territories", "Kuwait", "Palestine", "Bahrain", "Türkiye"]
 }
 
 response_schemas = [
@@ -37,9 +40,10 @@ def expand_region_terms(user_input: str) -> str:
         "Note: A \"disaster\" should be defined as a report where `disaster_name` OR `disaster_type` is NOT NULL.\n"
         "Do not check for disasters unless the prompt explicitly uses the word \"disaster\".\n"
         "If a user asks for a count of events or disasters, ensure the SQL query always keeps the `country_long` and `country_lat` fields for the country or region the user specifies.\n"
-        "The SQL query should check if a country name matches on both the `primary_country` field or the `primary_country_shortname` field.\n"
+        "The SQL query should check if a country name matches on either the `primary_country` field or the `primary_country_shortname` field. Ex. (primary_country = 'Mexico' OR primary_country_shortname = 'Mexico')\n"
+        "You must always include the `report_id`, `date_report_created`, `headline_title`, `headline_summary`, `source_homepage`, `source_name`, `country_lat`, `country_long`, `primary_country`, `primary_country_shortname`, and `report_url_alias` fields in the SQL query, as it's necessary to parse reports correctly.\n" \
+        "If a user asks for \"Turkey\", have the SQL query search for \"Türkiye\" instead for correct results.\n"
         "There are no other fields that you can use other than the ones below. Do not create new fields.\n"
-        "Also include the `report_url_alias` field in your SQL queries, they are integral.\n"
         "Table: `test_reports`\n"
         "Columns:\n"
         "- report_id: integer\n"
