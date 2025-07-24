@@ -7,6 +7,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -15,6 +16,7 @@ type Report = {
   country_lat: number;
   country_long: number;
   primary_country: string;
+  primary_country_shortname: string;
   headline_title: string;
   headline_summary: string;
   source_name: string;
@@ -38,6 +40,7 @@ export default function Home() {
   const [filteredEvents, setFilteredEvents] = useState<GroupedEvent[] | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [daysAgo, setDaysAgo] = useState(14);
+  const [limitError, setLimitError] = useState('');
   const [openCards, setOpenCards] = useState<Set<number>>(new Set());
 
 const toggleCard = (id: number) => {
@@ -398,7 +401,7 @@ const handleSliderChange = (value: number) => {
 
       </div>
 
-      {LoggedIn && (
+      (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[40rem] max-w-[90vw]">
           <form
             onSubmit={async (e) => {
@@ -410,14 +413,22 @@ const handleSliderChange = (value: number) => {
                 const res = await fetch("http://localhost:8000/llm-response", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ user_input: input }),
+                  body: JSON.stringify({ user_input: input, loggedIn: LoggedIn}),
                 });
                 const data = await res.json();
+                if(data.detail) {
+                    toast.error(data.detail, {
+                      description: "Log in or try again later.",
+                      action: {
+                        label: "Okay",
+                        onClick: () => console.log("User acknowledged limit."),
+                      },
+                    });
+                    return;
+                }
                 console.log("LLM Result:", data);
 
                 const rows = data.prompt_results || [];
-                console.log("the results: ", rows)
-                console.log(!rows);
                 if (rows.length === 0) {
                   setSelectedReports([
                     {
@@ -425,6 +436,7 @@ const handleSliderChange = (value: number) => {
                       country_lat: 0,
                       country_long: 0,
                       primary_country: "",
+                      primary_country_shortname: "",
                       headline_title: `No reports were found for your query. Slow news day!`,
                       headline_summary: "No reports available for this query.",
                       source_name: "",
@@ -442,6 +454,7 @@ const handleSliderChange = (value: number) => {
                       country_lat: 0,
                       country_long: 0,
                       primary_country: "",
+                      primary_country_shortname: "",
                       headline_title: `Total events: ${rows[0].event_count}`,
                       headline_summary: "Summary data only — no individual reports returned.",
                       source_name: "",
@@ -500,6 +513,7 @@ const handleSliderChange = (value: number) => {
             }}
             className="flex bg-black/60 border border-white/20 rounded-xl shadow-xl backdrop-blur-md"
           >
+
             <input
               name="query"
               type="text"
@@ -514,7 +528,7 @@ const handleSliderChange = (value: number) => {
             </button>
           </form>
         </div>
-      )}
+      )
     </div>
   );
 }
