@@ -15,7 +15,7 @@ REGION_MAP = {
              "Mongolia", "Bhutan", "Türkiye"],
     "europe": ["Germany", "France", "Italy", "Spain", "United Kingdom", "Sweden", "Norway", "Poland", "Switzerland", "Portugal", "Hungary", "Greece", "Serbia", "Ukraine", "Moldova", "Lithuania", "Finland", "Croatia", "Belarus", "Slovakia", "Austria", "Albania", "Bulgaria", "Latvia", "Russia", "Netherlands", "Ireland", "Moldova", "Bosnia and Herzegovina", 
                "Estonia", "Iceland", "Greenland", "Cyrpus", "Malta"],
-    "africa": ["Nigeria", "Ethiopia", "Egypt", "Democratic Republic of the Congo", "Tanzania", "South Africa", "Kenya", "Sudan", "South Sudan", "Uganda", "Algeria", "Angola", "Morocco", "Mozambique", "Ghana", "Madagascar", "Côte d'Ivoire", "Cameroon", "Niger", "Mali", "Burkina Faso", "Malawi", "Zambia", "Chad", "Somalia", "Senegal", "Zimbabwe",
+    "africa": ["Nigeria", "Ethiopia", "Egypt", "Democratic Republic of the Congo", "Tanzania", "South Africa", "Kenya", "Sudan", "South Sudan", "Uganda", "Algeria", "Angola", "Morocco", "Mozambique", "Ghana", "Madagascar", "Côte d''Ivoire", "Cameroon", "Niger", "Mali", "Burkina Faso", "Malawi", "Zambia", "Chad", "Somalia", "Senegal", "Zimbabwe",
                "Guinea", "Benin", "Rwanda", "Burundi", "Tunisia", "Togo", "Sierra Leone", "Libya", "Congo", "Liberia", "Central African Republic", "Mauritania", "Eritrea", "Namibia", "Gambia", "Gabon", "Botswana", "Lesotho", "Guinea-Bissau", "Equatorial Guinea", "Mauritius", "Eswatini", "Djibouti", "Comoros", "Seychelles"],
     "south america": ["Brazil", "Argentina", "Chile", "Colombia", "Peru", "Bolivia", "Ecuador", "Guyana", "Paraguay", "Suriname", "Uruguay", "Venezuela"],
     "north america": ["United States", "Canada", "Mexico", "Bahamas", "Belize", "Costa Rica", "Cuba", "Dominican Republic", "El Salvador", "Grenada", "Guatemala", "Jamaica", "Haiti", "Honduras", "Nicaragua", "Panama", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Trinidad and Tobago"],
@@ -44,6 +44,8 @@ def expand_region_terms(user_input: str) -> str:
         "You must always include the `report_id`, `date_report_created`, `headline_title`, `headline_summary`, `source_homepage`, `source_name`, `country_lat`, `country_long`, `primary_country`, `primary_country_shortname`, and `report_url_alias` fields in the SQL query, as it's necessary to parse reports correctly.\n" \
         "If a user's input does not seem to be asking a question, simply return a sql query that returns an empty list.\n"
         "If a user asks for \"Turkey\", have the SQL query search for \"Türkiye\" instead for correct results.\n"
+        "These are all the possible `disaster_type` fields. If none of these match a user's query, then check for keywords related to the user's query in the `headline_title` or `headline_summary instead.`\n"
+        "Mud Slide, Insect Infestation, Tsunami, Cold Wave, Fire, Complex Emergency, Extratropical Cyclone, Drought, Epidemic, Earthquake, Flash Flood, Technological Disaster, Snow Avalanche, Severe Local Storm, Wild Fire, Tropical Cyclone, Flood.\n"
         "There are no other fields that you can use other than the ones below. Do not create new fields.\n"
         "Table: `test_reports`\n"
         "Columns:\n"
