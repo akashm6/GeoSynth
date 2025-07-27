@@ -48,7 +48,7 @@ def get_last_updated_time(db: Session = Depends(get_db)):
         readable = last_updated.strftime("%B %d, %Y at %I:%M %p UTC")
         return readable
     except Exception as e:
-        return {"message":  e.name}
+        return {"message":  e}
 
 
 @router.post("/llm-response")
