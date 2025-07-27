@@ -43,6 +43,7 @@ def expand_region_terms(user_input: str) -> str:
         "The SQL query should check if a country name matches on either the `primary_country` field or the `primary_country_shortname` field. Ex. (primary_country = 'Mexico' OR primary_country_shortname = 'Mexico')\n"
         "You must always include the `report_id`, `date_report_created`, `headline_title`, `headline_summary`, `source_homepage`, `source_name`, `country_lat`, `country_long`, `primary_country`, `primary_country_shortname`, and `report_url_alias` fields in the SQL query, as it's necessary to parse reports correctly.\n" \
         "If a user's input does not seem to be asking a question, simply return a sql query that returns an empty list.\n"
+        "If a user asks about geospatial distances, make sure that your sql query uses ST_DWithin with the `geom` field.\n"
         "If a user asks for \"Turkey\", have the SQL query search for \"Türkiye\" instead for correct results.\n"
         "References to \"Palestine\" should be mapped to \"occupied Palestinian territory\".\n"
         "These are all the possible `disaster_type` fields. If none of these match a user's query, then check for keywords related to the user's query in the `headline_title` or `headline_summary instead.`\n"
