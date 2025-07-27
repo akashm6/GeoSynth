@@ -7,7 +7,8 @@ import os
 load_dotenv()
 
 connection_string = os.getenv("DATABASE_CONN_STRING") or "postgresql+psycopg2://postgres:@localhost:5432/globedb_dev"
-engine = create_engine(connection_string)
+#print(connection_string)
+engine = create_engine(connection_string, pool_pre_ping=True, connect_args={"sslmode": "require"})
 SessionLocal = sessionmaker(autocommit = False, autoflush = False, bind = engine)
 
 def check_conn():
