@@ -8,12 +8,21 @@ from app.llm_chain import generate
 from collections import defaultdict
 from dotenv import load_dotenv
 import redis
+import os
 
 load_dotenv()
 
 router = APIRouter()
 
-redis_client = redis.Redis(decode_responses=True)
+REDIS_HOST = os.getenv("REDISHOST")
+REDISPASSWORD = os.getenv("REDISPASSWORD")
+REDISPORT = os.getenv("REDISPORT")
+
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDISPORT,
+    password=REDISPASSWORD,
+    decode_responses=True)
 
 class LLMInput(BaseModel):
     user_input: str

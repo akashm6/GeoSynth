@@ -4,7 +4,6 @@ from celery import Celery
 from dotenv import load_dotenv
 import os
 from celery.schedules import crontab
-from fastapi import FastAPI, HTTPException
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from app.db_models.worldevent import ReportData
