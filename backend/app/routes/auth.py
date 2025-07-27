@@ -132,3 +132,6 @@ def validate_token(token_info: JWTModel):
     except jwt.InvalidTokenError:
         return False
 
+@router.get("/")
+def health_check():
+    return "working fine"
