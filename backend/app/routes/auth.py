@@ -8,19 +8,13 @@ from dotenv import load_dotenv
 from pathlib import Path
 import requests
 import jwt
+import base64
 import os
 
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-priv_key_path = BASE_DIR / "app" / "keys" / "privjwt.key"
-pub_key_path = BASE_DIR / "app" / "keys" / "pubjwt.key.pub"
-
-with open(priv_key_path, "r") as f:
-    PRIV_JWT_KEY = f.read()
-
-with open(pub_key_path, "r") as f:
-    PUBLIC_JWT_KEY = f.read()
+PRIV_JWT_KEY = base64.b64decode(os.getenv("PRIV_JWT_KEY")).decode("utf-8")
+PUBLIC_JWT_KEY = base64.b64decode(os.getenv("PUBLIC_JWT_KEY")).decode("utf-8")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
