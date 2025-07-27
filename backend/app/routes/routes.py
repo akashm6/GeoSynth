@@ -112,3 +112,15 @@ def grab_initial_events(db: Session = Depends(get_db)):
 @router.get("/ping")
 def ping():
     return {"msg": "pong"}
+
+@router.get("/redis-check")
+def redis_check():
+    try:
+        pong = redis_client.ping()
+        if pong:
+            return {"status": "connected"}
+        else:
+            return {"status": "disconnected"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
