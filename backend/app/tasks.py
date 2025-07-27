@@ -19,8 +19,8 @@ appname = "atlascope"
 @app.on_after_configure.connect
 def setup_periodic_data_refresh(sender: Celery, **kwargs):
     sender.add_periodic_task(
-        crontab(minute = 0, hour = '*/12'),
-        fetch_refreshed_data.s()
+        crontab(minute = 0, hour = '*/3'),
+        refresh_db.s()
     )
 
 @app.task
@@ -214,14 +214,26 @@ def fetch_insert_db(reports):
                 continue
     print(f"Succesfully inserted {count} reports into DB.")
 
-# Refreshes the DB every 12 hours with new reports/events
+# Refreshes the DB every 3 hours with new reports/events
 @app.task
-def fetch_refreshed_data():
+def refresh_db():
     now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(hours=12)
-    fetch_insert_db(start)
+    start = now - timedelta(hours=4)
+    total_requests = 0
+    offset = 0
+    limit = 1000
+    max_requests = 1000
 
-    return {"Message": now}
+    while total_requests < max_requests:
+        print(f"Fetching offset {offset}")
+        reports = fetch_reports(start = start, end = now, offset = offset, limit = limit)
+        if not reports:
+            break
+        fetch_insert_db(reports)
+        if len(reports) < limit:
+            break
+        offset += limit
+        total_requests += 1
 
 @app.task
 def test_add(name: str):
@@ -244,24 +256,3 @@ def test_table_clear():
         cursor.commit()
         print("Reset.")
 
-@app.task
-def manual_backfill():
-    now = datetime.now(timezone.utc).replace(microsecond=0)
-    start = now - timedelta(days=14)
-    total_requests = 0
-    offset = 0
-    limit = 1000
-    max_requests = 1000
-
-    while total_requests < max_requests:
-        print(f"Fetching offset {offset}")
-        reports = fetch_reports(start = start, end = now, offset = offset, limit = limit)
-        if not reports:
-            break
-        fetch_insert_db(reports)
-        if len(reports) < limit:
-            break
-        offset += limit
-        total_requests += 1
-
-manual_backfill()
