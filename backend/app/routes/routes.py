@@ -37,16 +37,20 @@ def get_db():
 
 @router.get("/last-updated")
 def get_last_updated_time(db: Session = Depends(get_db)):
+    try:
+        query = text("SELECT MAX(date_report_created) FROM test_reports;")
+        result = db.execute(query)
+        last_updated = result.scalar()
 
-    query = text("""
-    SELECT MAX(date_report_created) FROM test_reports;
-    """)
-    result = db.execute(query)
-    last_updated = result.scalar()
+        if not last_updated:
+            return {"status": "no data"}
 
-    readable = last_updated.strftime("%B %d, %Y at %I:%M %p UTC")
-    
-    return readable
+        readable = last_updated.strftime("%B %d, %Y at %I:%M %p UTC")
+        return readable
+    except Exception as e:
+        print("DB ERROR:", e)
+        raise HTTPException(status_code=500, detail="DB connection or query failed.")
+
 
 @router.post("/llm-response")
 def process_prompt(input: LLMInput, request: Request, db:Session=Depends(get_db)):
