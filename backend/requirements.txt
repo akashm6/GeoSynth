@@ -6,10 +6,11 @@ psycopg2-binary
 celery
 redis
 langchain
+langchain-core
+langchain-openai
+langchain-text-splitters
+pydantic
+urllib3
 openai
 requests
 pyjwt[crypto]
-
-
-
-
