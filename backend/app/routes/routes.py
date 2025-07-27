@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from app.llm_chain import generate
 from collections import defaultdict
 from dotenv import load_dotenv
+from sqlalchemy.exc import DBAPIError
+import traceback
 import redis
 import os
 
@@ -38,17 +40,18 @@ def get_db():
 @router.get("/last-updated")
 def get_last_updated_time(db: Session = Depends(get_db)):
     try:
-        query = text("SELECT MAX(date_report_created) FROM test_reports;")
-        result = db.execute(query)
-        last_updated = result.scalar()
-
-        if not last_updated:
-            return {"status": "no data"}
-
-        readable = last_updated.strftime("%B %d, %Y at %I:%M %p UTC")
-        return readable
-    except Exception as e:
-        return {"message":  e}
+        result = db.execute(text("SELECT MAX(date_report_created) FROM test_reports;"))
+        last = result.scalar()
+        if not last:
+            return {"status": "no data yet"}
+        return last.strftime("%B %d, %Y at %I:%M %p UTC")
+    except DBAPIError as e:
+        traceback.print_exc()
+        detail = str(e.orig) if hasattr(e, "orig") else str(e)
+        raise HTTPException(status_code=500, detail=f"DB error: {detail}")
+    except Exception:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 @router.post("/llm-response")
