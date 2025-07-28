@@ -1,9 +1,10 @@
 from sqlalchemy import create_engine, text
 from typing import Optional
 from pydantic import BaseModel
+import os
 from datetime import datetime
 
-connection_string = 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
+connection_string = os.getenv("DATABASE_CONN_STRING") or 'postgresql+psycopg2://postgres:@localhost:5432/globedb_dev'
 engine = create_engine(connection_string)
 
 class ReportData(BaseModel):
