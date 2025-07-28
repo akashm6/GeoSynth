@@ -535,7 +535,7 @@ export default function Home() {
                     !isNaN(row.country_lat) &&
                     !isNaN(row.country_long)
                 )
-                .map((row: any) => ({
+                .map((row: Report) => ({
                   type: "Feature",
                   geometry: {
                     type: "Point",
