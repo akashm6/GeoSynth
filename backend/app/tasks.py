@@ -11,7 +11,7 @@ from app.db import engine
 
 load_dotenv()
 
-redis_url =  "redis://localhost:6379/0"
+redis_url =  os.get("REDIS_URL") or "redis://localhost:6379/0"
 
 app = Celery("tasks", broker = redis_url, backend = redis_url)
 appname = "atlascope"
