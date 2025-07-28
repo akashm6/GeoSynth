@@ -1,9 +1,11 @@
 "use client";
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {motion} from 'framer-motion';
 
-export default function AuthCallback() {
+import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { motion } from "framer-motion";
+
+function AuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const FASTAPI_BACKEND = process.env.NEXT_PUBLIC_FASTAPI_BACKEND;
@@ -20,7 +22,7 @@ export default function AuthCallback() {
         if (data.token) {
           localStorage.setItem("jwt", data.token);
           localStorage.setItem("user", JSON.stringify(data.user_data));
-          router.push("/"); 
+          router.push("/");
         } else {
           router.push("/login?error=auth_failed");
         }
@@ -34,8 +36,7 @@ export default function AuthCallback() {
   }, [searchParams, router, FASTAPI_BACKEND]);
 
   return (
-  
-  <motion.div
+    <motion.div
       initial={{ opacity: 0.4 }}
       animate={{ opacity: [0.4, 1, 0.4] }}
       transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -43,6 +44,13 @@ export default function AuthCallback() {
     >
       Logging in...
     </motion.div>
-  )
+  );
+}
 
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <AuthCallback />
+    </Suspense>
+  );
 }
