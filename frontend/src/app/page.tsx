@@ -38,12 +38,13 @@ export default function Home() {
   const [LoggedIn, setLoggedIn] = useState(false);
   const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
   const [allReports, setAllReports] = useState<GroupedEvent[] | null>(null);
+  /*
   const [filteredEvents, setFilteredEvents] = useState<GroupedEvent[] | null>(
     null
   );
+  */
   const [lastUpdated, setLastUpdated] = useState("");
   const [daysAgo, setDaysAgo] = useState(14);
-  const [limitError, setLimitError] = useState("");
   const [openCards, setOpenCards] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
@@ -98,6 +99,7 @@ export default function Home() {
     });
 
     setAllReports(data);
+    //setFilteredEvents(data);
     return data;
   };
 
@@ -134,7 +136,7 @@ export default function Home() {
       }
     });
 
-    setFilteredEvents(filtered);
+    //setFilteredEvents(filtered);
 
     const updatedGeoJSON = {
       type: "FeatureCollection" as const,
@@ -161,18 +163,19 @@ export default function Home() {
       }
 
       const handleReportClick = (e: mapboxgl.MapMouseEvent) => {
-        const feature = e.features?.[0];
-        if (feature && feature.properties?.reports) {
-          const rawReports: Report[] = JSON.parse(feature.properties.reports);
+  const feature = e.features?.[0];
+  if (feature && feature.properties?.reports) {
+    const rawReports: Report[] = JSON.parse(feature.properties.reports);
 
-          const filteredReports = rawReports.filter((report) => {
-            const reportDate = new Date(report.date_report_created);
-            return reportDate >= cutoff;
-          });
+    const filteredReports = rawReports.filter((report) => {
+      const reportDate = new Date(report.date_report_created);
+      return reportDate >= cutoff;
+    });
 
-          setSelectedReports(filteredReports);
-        }
-      };
+    setSelectedReports(filteredReports);
+  }
+};
+
 
       map._reportClickHandler = handleReportClick;
       map.on("click", "report-circles", handleReportClick);
@@ -187,6 +190,7 @@ export default function Home() {
 
     (async () => {
       const groupedEvents = await grabInitialEvents();
+      handleSliderChange(daysAgo);
       const lastUpdated = await getLastUpdatedTime();
       setLastUpdated(lastUpdated);
 
@@ -255,6 +259,7 @@ export default function Home() {
           },
         });
 
+        /*
         map.on("click", "report-circles", (e) => {
           const feature = e.features?.[0];
           if (feature && feature.properties?.reports) {
@@ -262,6 +267,7 @@ export default function Home() {
             setSelectedReports(reports);
           }
         });
+        */
 
         map.on("mouseenter", "report-circles", () => {
           map.getCanvas().style.cursor = "pointer";
@@ -523,7 +529,7 @@ export default function Home() {
 
               const validFeatures = rows
                 .filter(
-                  (row: any) =>
+                  (row: Report) =>
                     typeof row.country_lat === "number" &&
                     typeof row.country_long === "number" &&
                     !isNaN(row.country_lat) &&

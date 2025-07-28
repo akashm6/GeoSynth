@@ -31,7 +31,7 @@ export default function AuthCallback() {
     };
 
     authenticateUser();
-  }, [searchParams, router]);
+  }, [searchParams, router, FASTAPI_BACKEND]);
 
   return (
   
