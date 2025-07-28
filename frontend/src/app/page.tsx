@@ -596,7 +596,7 @@ export default function Home() {
           <input
             name="query"
             type="text"
-            placeholder="Ask Atlascope (e.g. disasters in Asia last week)"
+            placeholder="Ask GeoSynth (e.g. disasters in Asia last week)"
             className="flex-1 px-4 py-2 bg-transparent text-white placeholder-gray-400 focus:outline-none"
           />
           <button
