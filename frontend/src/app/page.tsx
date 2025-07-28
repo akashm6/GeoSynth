@@ -32,6 +32,23 @@ type GroupedEvent = {
   reports: Report[];
 };
 
+function createReportClickHandler(cutoff: Date, setSelectedReports: (reports: Report[]) => void) {
+  return (e: mapboxgl.MapMouseEvent) => {
+    const feature = e.features?.[0];
+    if (feature && feature.properties?.reports) {
+      const rawReports: Report[] = JSON.parse(feature.properties.reports);
+
+      const filteredReports = rawReports.filter((report) => {
+        const reportDate = new Date(report.date_report_created);
+        return reportDate >= cutoff;
+      });
+
+      setSelectedReports(filteredReports);
+    }
+  };
+}
+
+
 export default function Home() {
   const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -163,20 +180,18 @@ export default function Home() {
       }
 
       const handleReportClick = (e: mapboxgl.MapMouseEvent) => {
-  const feature = e.features?.[0];
-  if (feature && feature.properties?.reports) {
-    const rawReports: Report[] = JSON.parse(feature.properties.reports);
+        const feature = e.features?.[0];
+        if (feature && feature.properties?.reports) {
+          const rawReports: Report[] = JSON.parse(feature.properties.reports);
 
-    const filteredReports = rawReports.filter((report) => {
-      const reportDate = new Date(report.date_report_created);
-      return reportDate >= cutoff;
-    });
+          const filteredReports = rawReports.filter((report) => {
+            const reportDate = new Date(report.date_report_created);
+            return reportDate >= cutoff;
+          });
 
-    setSelectedReports(filteredReports);
-  }
-};
-
-
+          setSelectedReports(filteredReports);
+        }
+      };
       map._reportClickHandler = handleReportClick;
       map.on("click", "report-circles", handleReportClick);
     }
@@ -259,6 +274,13 @@ export default function Home() {
           },
         });
 
+        const initialCutoff = new Date();
+initialCutoff.setDate(initialCutoff.getDate() - daysAgo);
+
+const reportClickHandler = createReportClickHandler(initialCutoff, setSelectedReports);
+(map as MapWithHandler)._reportClickHandler = reportClickHandler;
+map.on("click", "report-circles", reportClickHandler);
+
         /*
         map.on("click", "report-circles", (e) => {
           const feature = e.features?.[0];
@@ -308,8 +330,15 @@ export default function Home() {
     })();
 
     return () => {
-      if (mapRef.current) mapRef.current.remove();
-    };
+  const map = mapRef.current as MapWithHandler;
+  if (map && map._reportClickHandler) {
+    map.off("click", "report-circles", map._reportClickHandler);
+  }
+  if (mapRef.current) {
+    mapRef.current.remove();
+  }
+};
+
   }, [router]);
 
   return (
