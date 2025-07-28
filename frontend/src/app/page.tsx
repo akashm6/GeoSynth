@@ -200,8 +200,8 @@ export default function Home() {
     (async () => {
       const groupedEvents = await grabInitialEvents();
       handleSliderChange(daysAgo);
-      const lastUpdated = await getLastUpdatedTime();
-      setLastUpdated(lastUpdated);
+      const updateTime = await getLastUpdatedTime();
+      setLastUpdated(updateTime);
 
       const geojson = {
         type: "FeatureCollection" as const,
@@ -485,7 +485,6 @@ export default function Home() {
           })}
         </ul>
       </div>
-      (
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[40rem] max-w-[90vw]">
         <form
           onSubmit={async (e) => {
@@ -627,7 +626,6 @@ export default function Home() {
           </motion.div>
         )}
       </div>
-      )
     </div>
   );
 }
