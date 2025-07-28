@@ -18,8 +18,14 @@ appname = "atlascope"
 
 @app.on_after_configure.connect
 def setup_periodic_data_refresh(sender: Celery, **kwargs):
+    '''
     sender.add_periodic_task(
         crontab(minute = 0, hour = '*/3'),
+        refresh_db.s()
+    )
+    '''
+    sender.add_periodic_task(
+        crontab(minute = '*'),
         refresh_db.s()
     )
 
