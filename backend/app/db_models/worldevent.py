@@ -39,5 +39,3 @@ def test_insert():
             conn.commit()
         except Exception as e:
             print(e)
-
-test_insert()
