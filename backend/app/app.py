@@ -6,7 +6,10 @@ from app.routes.auth import router as auth_router
 # fastapi entrypoint file
 app = FastAPI()
 origins = [
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://geosynth-five.vercel.app/",
+    "https://geosynth-akmohan0303-7865s-projects.vercel.app/",
+    "https://geosynth-git-main-akmohan0303-7865s-projects.vercel.app/"
 ]
 
 app.add_middleware(
