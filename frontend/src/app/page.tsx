@@ -335,11 +335,20 @@ export default function Home() {
         style={{ height: "100vh", width: "100vw" }}
       />
       <div className="absolute top-4 left-4 z-50 bg-gradient-to-r from-slate-800 to-slate-900 border border-white/20 text-sm text-neutral-300 px-4 py-2 rounded-xl shadow-lg backdrop-blur-md">
-        {lastUpdated && (
+        {lastUpdated ? (
           <p>
             <span className="text-white font-semibold">Last updated:</span>{" "}
             {lastUpdated}
           </p>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            className="mt-3 text-center text-sm text-white/80"
+          >
+            Loading...
+          </motion.div>
         )}
       </div>
       <div className="absolute top-4 right-4 z-50">
