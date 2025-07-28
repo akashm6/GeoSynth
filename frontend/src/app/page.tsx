@@ -47,6 +47,8 @@ export default function Home() {
   const [openCards, setOpenCards] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
+  const FASTAPI_BACKEND = process.env.NEXT_PUBLIC_FASTAPI_BACKEND;
+
   const toggleCard = (id: number) => {
     const newSet = new Set(openCards);
     if (newSet.has(id)) {
@@ -68,7 +70,7 @@ export default function Home() {
   const validateToken = async (t: string | null) => {
     if (!t) return false;
     try {
-      const res = await fetch(`http://localhost:8000/validate-token`, {
+      const res = await fetch(`${FASTAPI_BACKEND}/validate-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: t }),
@@ -81,12 +83,12 @@ export default function Home() {
   };
 
   const getLastUpdatedTime = async () => {
-    const res = await fetch("http://localhost:8000/last-updated");
+    const res = await fetch(`${FASTAPI_BACKEND}/last-updated`);
     return await res.json();
   };
 
   const grabInitialEvents = async (): Promise<GroupedEvent[]> => {
-    const res = await fetch("http://localhost:8000/grab-initial-events");
+    const res = await fetch(`${FASTAPI_BACKEND}/grab-initial-events`);
     const data = await res.json();
 
     data.forEach((group: GroupedEvent) => {
@@ -463,7 +465,7 @@ export default function Home() {
 
             try {
               setIsLoading(true);
-              const res = await fetch("http://localhost:8000/llm-response", {
+              const res = await fetch(`${FASTAPI_BACKEND}/llm-response`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user_input: input, loggedIn: LoggedIn }),
@@ -480,7 +482,6 @@ export default function Home() {
                 });
                 return;
               }
-              console.log("LLM Result:", data);
 
               const rows = data.prompt_results || [];
               if (rows.length === 0) {
