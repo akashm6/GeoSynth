@@ -32,7 +32,10 @@ type GroupedEvent = {
   reports: Report[];
 };
 
-function createReportClickHandler(cutoff: Date, setSelectedReports: (reports: Report[]) => void) {
+function createReportClickHandler(
+  cutoff: Date,
+  setSelectedReports: (reports: Report[]) => void
+) {
   return (e: mapboxgl.MapMouseEvent) => {
     const feature = e.features?.[0];
     if (feature && feature.properties?.reports) {
@@ -48,18 +51,12 @@ function createReportClickHandler(cutoff: Date, setSelectedReports: (reports: Re
   };
 }
 
-
 export default function Home() {
   const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const [LoggedIn, setLoggedIn] = useState(false);
   const [selectedReports, setSelectedReports] = useState<Report[] | null>(null);
   const [allReports, setAllReports] = useState<GroupedEvent[] | null>(null);
-  /*
-  const [filteredEvents, setFilteredEvents] = useState<GroupedEvent[] | null>(
-    null
-  );
-  */
   const [lastUpdated, setLastUpdated] = useState("");
   const [daysAgo, setDaysAgo] = useState(14);
   const [openCards, setOpenCards] = useState<Set<number>>(new Set());
@@ -116,7 +113,6 @@ export default function Home() {
     });
 
     setAllReports(data);
-    //setFilteredEvents(data);
     return data;
   };
 
@@ -152,8 +148,6 @@ export default function Home() {
         filtered.push({ lat: group.lat, long: group.long, reports });
       }
     });
-
-    //setFilteredEvents(filtered);
 
     const updatedGeoJSON = {
       type: "FeatureCollection" as const,
@@ -275,21 +269,14 @@ export default function Home() {
         });
 
         const initialCutoff = new Date();
-initialCutoff.setDate(initialCutoff.getDate() - daysAgo);
+        initialCutoff.setDate(initialCutoff.getDate() - daysAgo);
 
-const reportClickHandler = createReportClickHandler(initialCutoff, setSelectedReports);
-(map as MapWithHandler)._reportClickHandler = reportClickHandler;
-map.on("click", "report-circles", reportClickHandler);
-
-        /*
-        map.on("click", "report-circles", (e) => {
-          const feature = e.features?.[0];
-          if (feature && feature.properties?.reports) {
-            const reports = JSON.parse(feature.properties.reports);
-            setSelectedReports(reports);
-          }
-        });
-        */
+        const reportClickHandler = createReportClickHandler(
+          initialCutoff,
+          setSelectedReports
+        );
+        (map as MapWithHandler)._reportClickHandler = reportClickHandler;
+        map.on("click", "report-circles", reportClickHandler);
 
         map.on("mouseenter", "report-circles", () => {
           map.getCanvas().style.cursor = "pointer";
@@ -330,15 +317,14 @@ map.on("click", "report-circles", reportClickHandler);
     })();
 
     return () => {
-  const map = mapRef.current as MapWithHandler;
-  if (map && map._reportClickHandler) {
-    map.off("click", "report-circles", map._reportClickHandler);
-  }
-  if (mapRef.current) {
-    mapRef.current.remove();
-  }
-};
-
+      const map = mapRef.current as MapWithHandler;
+      if (map && map._reportClickHandler) {
+        map.off("click", "report-circles", map._reportClickHandler);
+      }
+      if (mapRef.current) {
+        mapRef.current.remove();
+      }
+    };
   }, [router]);
 
   return (
@@ -349,10 +335,12 @@ map.on("click", "report-circles", reportClickHandler);
         style={{ height: "100vh", width: "100vw" }}
       />
       <div className="absolute top-4 left-4 z-50 bg-gradient-to-r from-slate-800 to-slate-900 border border-white/20 text-sm text-neutral-300 px-4 py-2 rounded-xl shadow-lg backdrop-blur-md">
-        <p>
-          <span className="text-white font-semibold">Last updated:</span>{" "}
-          {lastUpdated}
-        </p>
+        {lastUpdated && (
+          <p>
+            <span className="text-white font-semibold">Last updated:</span>{" "}
+            {lastUpdated}
+          </p>
+        )}
       </div>
       <div className="absolute top-4 right-4 z-50">
         {LoggedIn ? (
