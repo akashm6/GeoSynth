@@ -360,7 +360,7 @@ export default function Home() {
         >
           <Button
             variant="ghost"
-            className="border border-white/20 text-white hover:text-sky-300 transition hover:shadow-[0_0_10px_1px_rgba(0,212,255,0.4)]"
+            className="border border-white/20 text-white hover:text-sky-300 transition cursor-pointer hover:shadow-[0_0_10px_1px_rgba(0,212,255,0.4)]"
           >
             <Github className="w-4 h-4 mr-2" />
             GitHub
