@@ -9,6 +9,7 @@ import clsx from "clsx";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { Github } from "lucide-react";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
@@ -351,7 +352,21 @@ export default function Home() {
           </motion.div>
         )}
       </div>
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-4 right-4 z-50 flex gap-2 items-center">
+        <a
+          href="https://github.com/akashm6/geosynth"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            variant="ghost"
+            className="border border-white/20 text-white hover:text-sky-300 transition hover:shadow-[0_0_10px_1px_rgba(0,212,255,0.4)]"
+          >
+            <Github className="w-4 h-4 mr-2" />
+            GitHub
+          </Button>
+        </a>
+
         {LoggedIn ? (
           <Button
             onClick={handleLogout}
@@ -368,6 +383,7 @@ export default function Home() {
           </Button>
         )}
       </div>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
