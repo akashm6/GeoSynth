@@ -433,7 +433,7 @@ export default function Home() {
           <h2 className="text-xl font-bold">Reports</h2>
           <button
             onClick={() => setSelectedReports(null)}
-            className="text-sm text-blue-400 hover:underline"
+            className="text-sm text-blue-400 hover:underline cursor-pointer"
           >
             Close
           </button>
