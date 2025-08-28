@@ -16,15 +16,8 @@ load_dotenv()
 
 router = APIRouter()
 
-REDIS_HOST = os.getenv("REDISHOST")
-REDISPASSWORD = os.getenv("REDISPASSWORD")
-REDISPORT = os.getenv("REDISPORT")
-
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=REDISPORT,
-    password=REDISPASSWORD,
-    decode_responses=True)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 class LLMInput(BaseModel):
     user_input: str
