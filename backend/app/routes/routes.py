@@ -130,3 +130,13 @@ def redis_check():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+@router.get("/last-refresh-run")
+def get_last_refresh_run():
+    try:
+        last = redis_client.get("last_refresh_db")
+        if last:
+            return {"last_refresh_run": last}
+        return {"last_refresh_run": None}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
