@@ -2,6 +2,7 @@ import requests
 from sqlalchemy import create_engine, text
 from celery import Celery
 from dotenv import load_dotenv
+import redis
 import os
 from celery.schedules import crontab
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,16 @@ from app.db import engine
 load_dotenv()
 
 redis_url =  os.getenv("REDIS_URL") or "redis://localhost:6379/0"
+
+REDIS_HOST = os.getenv("REDISHOST")
+REDISPASSWORD = os.getenv("REDISPASSWORD")
+REDISPORT = os.getenv("REDISPORT")
+
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDISPORT,
+    password=REDISPASSWORD,
+    decode_responses=True)
 
 app = Celery("tasks", broker = redis_url, backend = redis_url)
 appname = "atlascope"
@@ -236,6 +247,11 @@ def refresh_db():
             break
         offset += limit
         total_requests += 1
+        
+    try:
+        redis_client.set("last_refresh_db", now.isoformat())
+    except Exception as e:
+        print("Failed to update last_refresh_db:", e)
 
 @app.task
 def test_add(name: str):
