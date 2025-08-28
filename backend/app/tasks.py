@@ -16,6 +16,7 @@ redis_url =  os.getenv("REDIS_URL") or "redis://localhost:6379/0"
 app = Celery("tasks", broker = redis_url, backend = redis_url)
 appname = "atlascope"
 
+'''
 @app.on_after_configure.connect
 def setup_periodic_data_refresh(sender: Celery, **kwargs):
     
@@ -23,7 +24,7 @@ def setup_periodic_data_refresh(sender: Celery, **kwargs):
         crontab(minute = 0, hour = '*/3'),
         refresh_db.s()
     )
-
+'''
 @app.task
 def fetch_reports(start, end, offset = 0, limit = 1000):
 
