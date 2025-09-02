@@ -266,3 +266,32 @@ def test_table_clear():
         cursor.commit()
         print("Reset.")
 
+# one time run for cron issues
+@app.task
+def backfill_last_5_days():
+    print("Starting backfill for past 5 days...")
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    days_to_backfill = 5
+
+    for day_offset in range(days_to_backfill, 0, -1):
+        start = now - timedelta(days=day_offset)
+        end = start + timedelta(days=1)
+        offset = 0
+        limit = 1000
+        max_requests = 1000
+        total_requests = 0
+
+        print(f"Backfilling reports for {start.date()}...")
+
+        while total_requests < max_requests:
+            reports = fetch_reports(start=start, end=end, offset=offset, limit=limit)
+            if not reports:
+                break
+            fetch_insert_db(reports)
+            if len(reports) < limit:
+                break
+            offset += limit
+            total_requests += 1
+
+    print("Backfill complete.")
+
